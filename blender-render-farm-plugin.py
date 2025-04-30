@@ -794,6 +794,16 @@ class RENDERSERVER_OT_send_scene(bpy.types.Operator):
     bl_description = "Prepare scene, load to memory, and create render job"
 
     _job_id = None
+    _timer = None
+    _step = 0
+
+    blend_path = None
+    blend_data = None
+    blend_filename = None
+    job_added_successfully = False
+    all_frames = []
+    output_dir = ""
+    job_output_dir = ""
 
     @classmethod
     def poll(cls, context):
@@ -803,6 +813,13 @@ class RENDERSERVER_OT_send_scene(bpy.types.Operator):
         )
 
     def execute(self, context):
+        """
+        Kick off a modal operator that:
+          1) Saves (and packs) the current .blend to a temp file
+          2) Loads that file into memory
+          3) Registers the job in ACTIVE_JOBS
+          4) Cleans up the temp file
+        """
         if (
             not hasattr(context.scene, "render_server")
             or not context.scene.render_server.is_server_running
@@ -813,7 +830,6 @@ class RENDERSERVER_OT_send_scene(bpy.types.Operator):
         props = context.scene.render_server
         prefs = context.preferences.addons[__name__].preferences
 
-        # Generate unique job ID
         global JOB_COUNTER
         with JOB_COUNTER_LOCK:
             JOB_COUNTER += 1
@@ -823,138 +839,127 @@ class RENDERSERVER_OT_send_scene(bpy.types.Operator):
         frame_start = context.scene.frame_start
         frame_end = context.scene.frame_end
         frame_step = context.scene.frame_step
-        all_frames = list(range(frame_start, frame_end + 1, frame_step))
+        self.all_frames = list(range(frame_start, frame_end + 1, frame_step))
 
-        if not all_frames:
+        if not self.all_frames:
             self.report({"ERROR"}, "No frames in scene range.")
             return {"CANCELLED"}
 
-        print(f"Preparing job '{self._job_id}' with {len(all_frames)} frames...")
         self.report({"INFO"}, "Preparing blend file (UI may freeze)...")
-        if context.area:
-            context.area.tag_redraw()
 
-        context.window_manager.progress_begin(0, 100)
-        blend_path = None  # Path to the *temporary* file
-        blend_data = None  # Content read from the temp file
-        blend_filename = None  # Base filename
-        job_added_successfully = False  # Flag for cleanup
+        wm = context.window_manager
+        wm.progress_begin(0, 100)
+        self._step = 0
+        self.job_added_successfully = False
+        self.blend_path = None
+        self.blend_data = None
+        self.blend_filename = None
+        self.output_dir = bpy.path.abspath(prefs.output_directory)
+        self.job_output_dir = os.path.join(self.output_dir, self._job_id)
 
-        try:
+        self._timer = wm.event_timer_add(STATUS_UPDATE_INTERVAL, window=context.window)
+        wm.modal_handler_add(self)
+        return {"RUNNING_MODAL"}
+
+    def modal(self, context, event):
+        if event.type != "TIMER":
+            return {"PASS_THROUGH"}
+
+        props = context.scene.render_server
+
+        # Step 0: Save/pack the blend file to a temp path
+        if self._step == 0:
             context.window_manager.progress_update(5)
-            # Allow UI to redraw the progress bar
             bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
-            # Step 1: Create temporary file (handles packing, checks)
-            blend_path = self.prepare_blend_file(context)  # This can block UI
-            if not blend_path:
-                self.report(
-                    {"ERROR"}, "Failed to prepare temporary blend file (check console)."
-                )
-                return {"CANCELLED"}
-            print(f"Temporary blend file created: {blend_path}")
+            self.blend_path = self.prepare_blend_file(context)
+            if not self.blend_path:
+                return self._cancel_modal(context)
+            self._step = 1
+            return {"RUNNING_MODAL"}
+
+        # Step 1: Read the temp .blend into memory
+        if self._step == 1:
             context.window_manager.progress_update(70)
-            # Redraw UI to show updated progress
             bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
-
-            # Step 2: Read the temporary file into memory
-            print(f"Reading temporary blend file into memory...")
-            read_start_time = time.monotonic()
             try:
-                with open(blend_path, "rb") as f:
-                    blend_data = f.read()
-                blend_filename = os.path.basename(blend_path)
-                read_duration = time.monotonic() - read_start_time
-                print(f"Read {len(blend_data)} bytes in {read_duration:.2f}s.")
-                if not blend_data:
-                    raise ValueError("Read 0 bytes from temporary file.")
+                with open(self.blend_path, "rb") as f:
+                    self.blend_data = f.read()
+                self.blend_filename = os.path.basename(self.blend_path)
             except Exception as e:
-                self.report(
-                    {"ERROR"}, f"Failed to read temporary blend file {blend_path}: {e}"
-                )
-                # No need to manually remove blend_path here, finally block below handles it
-                return {"CANCELLED"}
+                self.report({"ERROR"}, f"Failed to read temp blend: {e}")
+                return self._cancel_modal(context)
+            self._step = 2
+            return {"RUNNING_MODAL"}
+
+        # Step 2: Register the job in memory
+        if self._step == 2:
             context.window_manager.progress_update(90)
-            # Redraw UI to show updated progress
             bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
-
-            # --- Create and register the job (using blend_data) ---
             with CLIENT_LOCK:
-                if self._job_id in ACTIVE_JOBS:
-                    self.report({"ERROR"}, f"Job ID '{self._job_id}' collision.")
-                    return {"CANCELLED"}  # Should not happen
-
                 output_format = context.scene.render.image_settings.file_format
                 color_mode = context.scene.render.image_settings.color_mode
                 color_depth = context.scene.render.image_settings.color_depth
-                job_output_format_details = (
-                    f"{output_format}_{color_mode}_{color_depth}"
-                )
-
+                fmt = f"{output_format}_{color_mode}_{color_depth}"
                 ACTIVE_JOBS[self._job_id] = {
                     "id": self._job_id,
-                    "all_frames": list(all_frames),
-                    "unassigned_frames": list(all_frames),
+                    "all_frames": list(self.all_frames),
+                    "unassigned_frames": list(self.all_frames),
                     "assigned_clients": {},
                     "completed_frames": [],
-                    # --- Store data and filename, not path ---
-                    "blend_data": blend_data,  # Store raw bytes
-                    "blend_filename": blend_filename,  # Store filename for client
-                    # ------------------------------------------
-                    "output_format": job_output_format_details,
+                    "blend_data": self.blend_data,
+                    "blend_filename": self.blend_filename,
+                    "output_format": fmt,
                     "start_time": datetime.now(),
                     "end_time": None,
                     "status": "active",
                 }
-                job_added_successfully = True  # Mark job as added
+                self.job_added_successfully = True
                 props.active_job_id = self._job_id
                 update_job_progress_display(context)
+            self._step = 3
+            return {"RUNNING_MODAL"}
 
-            context.window_manager.progress_update(95)  # Progress after adding job
-
-            # Step 3: Create job-specific output directory (remains the same)
-            output_dir = bpy.path.abspath(prefs.output_directory)
-            job_output_dir = os.path.join(output_dir, self._job_id)
+        # Step 3: Create output directory and finish up
+        if self._step == 3:
+            context.window_manager.progress_update(95)
+            bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
             try:
-                os.makedirs(job_output_dir, exist_ok=True)
-                print(f"Created job output directory: {job_output_dir}")
+                os.makedirs(self.job_output_dir, exist_ok=True)
             except Exception as e:
-                print(
-                    f"Warning: Could not create job output dir '{job_output_dir}': {e}"
-                )
-                self.report({"WARNING"}, f"Could not create job output directory: {e}")
-
+                self.report({"WARNING"}, f"Could not create job output dir: {e}")
             self.report(
                 {"INFO"},
-                f"Job '{self._job_id}' created with {len(all_frames)} frames (blend data in memory).",
+                f"Job '{self._job_id}' created with {len(self.all_frames)} frames.",
             )
-            return {"FINISHED"}
+            return self._finish_modal(context)
 
-        except Exception as e:
-            # Catch any unexpected errors during the process
-            self.report({"ERROR"}, f"Unexpected error creating job: {e}")
-            import traceback
+        return {"PASS_THROUGH"}
 
-            traceback.print_exc()
-            return {"CANCELLED"}
-        finally:
-            context.window_manager.progress_end()
-            # --- Clean up temporary file ---
-            # Always try to remove the temp file if it was created,
-            # especially if job wasn't added successfully or reading failed.
-            if blend_path and os.path.exists(blend_path):
-                if job_added_successfully:
-                    print(
-                        f"Removing temporary blend file (loaded to memory): {blend_path}"
-                    )
-                else:
-                    print(
-                        f"Cleaning up unused temporary blend file due to error: {blend_path}"
-                    )
-                try:
-                    os.remove(blend_path)
-                except OSError as e:
-                    print(f"  Warning: Failed to remove temporary blend file: {e}")
+    def _finish_modal(self, context):
+        wm = context.window_manager
+        wm.progress_end()
+        if self._timer:
+            wm.event_timer_remove(self._timer)
+        if self.blend_path and os.path.exists(self.blend_path):
+            try:
+                os.remove(self.blend_path)
+            except OSError:
+                pass
+        if context.area:
+            context.area.tag_redraw()
+        return {"FINISHED"}
 
+    def _cancel_modal(self, context):
+        wm = context.window_manager
+        wm.progress_end()
+        if self._timer:
+            wm.event_timer_remove(self._timer)
+        if self.blend_path and os.path.exists(self.blend_path):
+            try:
+                os.remove(self.blend_path)
+            except OSError:
+                pass
+        return {"CANCELLED"}
     def prepare_blend_file(self, context):
         """
         Saves a temporary copy of the current scene to disk.
