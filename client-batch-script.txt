@@ -1,0 +1,27 @@
+@echo off
+rem Blender Render Farm Client Starter Script
+rem Usage: start_client.bat [CLIENT_NAME]
+
+set CLIENT_NAME=Client-%COMPUTERNAME%
+if not "%~1"=="" set CLIENT_NAME=%~1
+
+rem Find Blender executable
+set BLENDER=blender.exe
+where /q %BLENDER%
+if errorlevel 1 (
+    rem Try common Blender paths
+    if exist "C:\Program Files\Blender Foundation\Blender\blender.exe" (
+        set BLENDER="C:\Program Files\Blender Foundation\Blender\blender.exe"
+    ) else if exist "C:\Program Files\Blender Foundation\Blender 3.0\blender.exe" (
+        set BLENDER="C:\Program Files\Blender Foundation\Blender 3.0\blender.exe"
+    ) else (
+        echo Error: Blender executable not found
+        echo Please edit this script and set the correct path to Blender
+        pause
+        exit /b 1
+    )
+)
+
+echo Starting Blender Render Farm Client: %CLIENT_NAME%
+%BLENDER% --background --python client.py -- --name "%CLIENT_NAME%"
+pause
