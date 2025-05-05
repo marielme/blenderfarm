@@ -143,6 +143,45 @@ class RenderServerProperties(bpy.types.PropertyGroup):
 
 
 # --- Helper Function to Update UI Job Progress ---
+def check_for_stalled_jobs():
+    """Check for jobs that appear to be stalled and might need intervention."""
+    with CLIENT_LOCK:
+        stalled_jobs = []
+        now = datetime.now()
+        
+        for job_id, job in ACTIVE_JOBS.items():
+            if job.get("status") != "active":
+                continue  # Only check active jobs
+                
+            # Check if job has no unassigned frames but isn't complete
+            total_frames = len(job.get("all_frames", []))
+            completed_frames = len(job.get("completed_frames", []))
+            unassigned_frames = len(job.get("unassigned_frames", []))
+            assigned_frames = 0
+            
+            # Count frames currently assigned to clients
+            for client_frames in job.get("assigned_clients", {}).values():
+                assigned_frames += len(client_frames)
+            
+            # Check for potentially stalled job:
+            # 1. No unassigned frames left
+            # 2. Not all frames completed
+            # 3. No frames currently assigned OR job has been active for over 1 hour
+            job_age = (now - job.get("start_time", now)).total_seconds() if "start_time" in job else 0
+            
+            if (unassigned_frames == 0 and 
+                completed_frames < total_frames and
+                (assigned_frames == 0 or job_age > 3600)):
+                
+                # Mark job as potentially stalled
+                if "stalled_detected" not in job:
+                    job["stalled_detected"] = True
+                    job["stalled_detected_time"] = now
+                    print(f"Render Server: Job '{job_id}' appears to be stalled. {completed_frames}/{total_frames} frames completed, {unassigned_frames} unassigned, {assigned_frames} assigned.")
+                    stalled_jobs.append(job_id)
+        
+        return stalled_jobs
+
 def update_job_progress_display(context: bpy.types.Context):
     """Safely updates the job progress properties based on ACTIVE_JOBS."""
     if not context or not hasattr(context, "scene") or not context.scene:
@@ -162,6 +201,9 @@ def update_job_progress_display(context: bpy.types.Context):
                 props.total_frames = total
                 props.completed_frames_count = completed
                 props.job_progress = (completed / total) * 100.0 if total > 0 else 0.0
+                
+                # Check for stalled jobs while we're updating the UI
+                check_for_stalled_jobs()
             else:
                 # Job ID is set in UI, but job doesn't exist in memory (cleared?)
                 needs_ui_reset = True
@@ -1563,6 +1605,12 @@ class RENDERSERVER_OT_clear_completed_job(bpy.types.Operator):
     bl_idname = "renderserver.clear_completed_job"
     bl_label = "Clear Completed Job Record"
     bl_description = "Remove the record of the completed job from memory (rendered files remain on disk)"
+    
+    job_id: bpy.props.StringProperty(
+        name="Job ID",
+        description="ID of the job to clear",
+        default=""
+    )
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
@@ -1582,9 +1630,13 @@ class RENDERSERVER_OT_clear_completed_job(bpy.types.Operator):
         props = getattr(context.scene, "render_server", None)
         if not props: return {"CANCELLED"} # Should not happen if poll passed
 
-        job_id_to_clear = props.active_job_id
-        if job_id_to_clear == "None":
-             self.report({"WARNING"}, "No active job selected to clear.")
+        # Get job ID either from operator property or from active job
+        job_id_to_clear = self.job_id
+        if not job_id_to_clear:
+            job_id_to_clear = props.active_job_id
+            
+        if job_id_to_clear == "None" or not job_id_to_clear:
+             self.report({"WARNING"}, "No job selected to clear.")
              return {"CANCELLED"}
 
         print(f"Render Server: Clearing completed job '{job_id_to_clear}' data from memory...")
@@ -1636,6 +1688,84 @@ class RENDERSERVER_OT_clear_completed_job(bpy.types.Operator):
 
 
 # --- Main UI Panel ---
+class RENDERSERVER_OT_force_job_complete(bpy.types.Operator):
+    bl_idname = "renderserver.force_job_complete"
+    bl_label = "Force Complete"
+    bl_description = "Force an active job to be marked as completed when it's stuck"
+    
+    job_id: bpy.props.StringProperty(
+        name="Job ID",
+        description="ID of the job to force complete",
+        default=""
+    )
+    
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        """Allow forcing completion only if server is running and the job exists and is 'active'."""
+        props = getattr(context.scene, "render_server", None)
+        if not props or not props.is_server_running:
+            return False
+        if props.active_job_id != "None":
+            with CLIENT_LOCK:
+                job = ACTIVE_JOBS.get(props.active_job_id)
+                # Allow completion for active jobs
+                return job is not None and job.get("status") == "active"
+        return False
+    
+    def execute(self, context: bpy.types.Context) -> set:
+        """Forces the active job to be marked as completed."""
+        job_id = self.job_id
+        if not job_id:
+            # If no job_id provided, try to get from active_job_id
+            props = getattr(context.scene, "render_server", None)
+            if props:
+                job_id = props.active_job_id
+        
+        if not job_id or job_id == "None":
+            self.report({"ERROR"}, "No job ID provided or active job found")
+            return {"CANCELLED"}
+        
+        print(f"Render Server: Force completing job '{job_id}'...")
+        completed = False
+        
+        with CLIENT_LOCK:
+            job = ACTIVE_JOBS.get(job_id)
+            if job and job.get("status") == "active":
+                # Get counts for logging
+                total_frames = len(job.get("all_frames", []))
+                completed_frames = len(job.get("completed_frames", []))
+                
+                # Mark job as completed
+                job["status"] = "completed"
+                job["end_time"] = datetime.now()
+                
+                # Clean up blend data to free memory
+                job.pop("blend_data", None)
+                
+                # Add a message to the job
+                job["forced_completion"] = True
+                job["completion_note"] = f"Forced complete at {completed_frames}/{total_frames} frames"
+                
+                print(f"Render Server: Job '{job_id}' has been force-completed with {completed_frames}/{total_frames} frames done")
+                completed = True
+            else:
+                if not job:
+                    print(f"Render Server: Cannot force-complete job '{job_id}', not found")
+                else:
+                    print(f"Render Server: Cannot force-complete job '{job_id}', status is '{job.get('status')}'")
+        
+        if completed:
+            self.report({"INFO"}, f"Job '{job_id}' has been force-completed")
+            # Force UI redraw
+            for window in context.window_manager.windows:
+                for area in window.screen.areas:
+                    if area.type == "PROPERTIES":
+                        area.tag_redraw()
+            return {"FINISHED"}
+        else:
+            self.report({"ERROR"}, f"Could not force-complete job '{job_id}'")
+            return {"CANCELLED"}
+
 class RENDERSERVER_PT_main_panel(bpy.types.Panel):
     bl_label = "Render Server (In-Memory)"
     bl_idname = "RENDERSERVER_PT_main_panel_minimal_memory"
@@ -1752,8 +1882,8 @@ class RENDERSERVER_PT_main_panel(bpy.types.Panel):
                     row = col.row(align=True)
                     row.label(text=f"Job '{active_job_id}' Completed", icon="CHECKMARK")
                     # Add clear button next to the status
-                    op_clear = row.operator("renderserver.clear_completed_job", text="", icon="X")
-                    op_clear.job_id = active_job_id # Pass job ID if needed (though operator gets from props)
+                    clear_op = row.operator("renderserver.clear_completed_job", text="", icon="X")
+                    clear_op.job_id = active_job_id
 
                     col.label(text=f"Started: {job_start_time_str}")
                     col.label(text=f"Duration: {job_duration_str}")
@@ -1794,12 +1924,26 @@ class RENDERSERVER_PT_main_panel(bpy.types.Panel):
                 row = col.row()
                 # Show frame counts (updated by modal timer)
                 row.label(text=f"Frames Completed: {props.completed_frames_count} / {props.total_frames}")
-
-                # Add option to cancel active job
-                row = col.row()
-                row.scale_y = 1.2  # Make the button slightly taller
-                cancel_op = row.operator("renderserver.cancel_job", icon="CANCEL", text="Cancel Active Job")
+                
+                # Check if job is potentially stalled
+                with CLIENT_LOCK:
+                    job = ACTIVE_JOBS.get(active_job_id)
+                    if job and job.get("stalled_detected"):
+                        stall_row = col.row()
+                        stall_row.alert = True  # Make the text red
+                        stall_row.label(text="This job appears to be stalled. Consider forcing completion.", icon="ERROR")
+                
+                # Add buttons for job actions
+                buttons_row = col.row(align=True)
+                buttons_row.scale_y = 1.2  # Make the buttons slightly taller
+                
+                # Cancel button
+                cancel_op = buttons_row.operator("renderserver.cancel_job", icon="CANCEL", text="Cancel Job")
                 cancel_op.job_id = active_job_id # Pass ID to operator
+                
+                # Force complete button
+                complete_op = buttons_row.operator("renderserver.force_job_complete", icon="CHECKMARK", text="Force Complete")
+                complete_op.job_id = active_job_id # Pass ID to operator
 
             # Handle case where UI shows an active_job_id, but the job data is missing
             elif active_job_id != "None" and not job_exists:
@@ -1919,6 +2063,7 @@ classes = (
     RENDERSERVER_OT_stop_server,
     RENDERSERVER_OT_send_scene,
     RENDERSERVER_OT_cancel_job,
+    RENDERSERVER_OT_force_job_complete,
     RENDERSERVER_OT_clear_completed_job,
     RENDERSERVER_PT_main_panel,
 )
