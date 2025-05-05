@@ -116,6 +116,41 @@ class RenderServerProperties(bpy.types.PropertyGroup):
         description="Pack textures before loading blend to memory. WARNING: Can significantly increase job creation time/freeze and blend data size. Unpacking is NOT handled automatically.",
         default=False,
     )
+    create_video: bpy.props.BoolProperty(
+        name="Create MP4 Video on Completion",
+        description="Create an MP4 video from rendered frames when the job completes",
+        default=True,
+    )
+    video_location: bpy.props.EnumProperty(
+        name="MP4 Location",
+        description="Where to save the MP4 video file",
+        items=[
+            ('parent', "Parent Directory", "Save in the parent directory above the frames"),
+            ('frames', "Frames Directory", "Save in the same directory as the frames"),
+            ('root', "Root Output Dir", "Save in the root output directory")
+        ],
+        default='parent'
+    )
+    video_codec: bpy.props.EnumProperty(
+        name="Video Codec",
+        description="Codec to use for creating MP4 videos",
+        items=[
+            ('h264', "H.264", "Standard H.264 codec, widely compatible"),
+            ('hevc', "H.265/HEVC", "Better compression but less compatible"),
+            ('prores', "ProRes", "Higher quality, larger file size")
+        ],
+        default='h264'
+    )
+    video_quality: bpy.props.EnumProperty(
+        name="Video Quality",
+        description="Quality setting for the video output",
+        items=[
+            ('high', "High", "High quality, larger file size"),
+            ('medium', "Medium", "Balanced quality and file size"),
+            ('low', "Low", "Lower quality, smaller file size")
+        ],
+        default='medium'
+    )
 
     active_job_id: bpy.props.StringProperty(
         name="Active Job ID",
@@ -143,6 +178,160 @@ class RenderServerProperties(bpy.types.PropertyGroup):
 
 
 # --- Helper Function to Update UI Job Progress ---
+def create_mp4_check(job_id):
+    """
+    Check if MP4 creation was requested for a job and call the create function.
+    This is called from a separate thread after job completion.
+    """
+    try:
+        with CLIENT_LOCK:
+            job = ACTIVE_JOBS.get(job_id)
+            if not job or not job.get("create_mp4_requested"):
+                return
+                
+            # Get the frames directory
+            frames_dir = job.get("mp4_output_dir")
+            if not frames_dir or not os.path.isdir(frames_dir):
+                print(f"Render Server: Cannot create MP4 for job {job_id}, invalid frames dir: {frames_dir}")
+                return
+                
+            # Find an active scene with render_server properties
+            import bpy
+            codec = 'h264'  # Default values in case we can't find preferences
+            quality = 'medium'
+            location = 'parent'  # Default to parent directory
+            
+            # Try to get preferences from any scene that has render_server properties
+            for scene in bpy.data.scenes:
+                if hasattr(scene, "render_server"):
+                    props = scene.render_server
+                    if props.create_video:
+                        codec = props.video_codec
+                        quality = props.video_quality
+                        location = props.video_location
+                        print(f"Render Server: Using MP4 settings from scene '{scene.name}': location={location}, codec={codec}, quality={quality}")
+                        break
+            
+            # Start the video creation process
+            job["mp4_creation_started"] = True
+            job["mp4_location"] = location  # Store the location setting
+            
+            # Determine the root output directory
+            prefs = bpy.context.preferences.addons[__name__].preferences
+            root_output_dir = bpy.path.abspath(prefs.output_directory)
+    
+    except Exception as e:
+        print(f"Render Server: Error preparing for MP4 creation: {e}")
+        traceback.print_exc()
+        return
+    
+    # Now call the actual ffmpeg function outside the lock
+    create_mp4_from_frames(frames_dir, codec, quality, job_id, location, root_output_dir)
+
+def create_mp4_from_frames(frames_dir, codec='h264', quality='medium', job_id='unknown', location='parent', root_dir=None):
+    """
+    Creates an MP4 video from rendered frames using ffmpeg.
+    
+    Args:
+        frames_dir: Directory containing the PNG frames
+        codec: Video codec to use (h264, hevc, prores)
+        quality: Quality setting (high, medium, low)
+        job_id: Job ID for logging purposes
+        location: Where to save the MP4 (parent, frames, or root)
+        root_dir: Root output directory (used if location='root')
+    """
+    try:
+        import subprocess
+        import glob
+        
+        print(f"Render Server: Starting MP4 creation for job '{job_id}' in {frames_dir}")
+        
+        # Find all rendered PNG frames
+        frame_pattern = os.path.join(frames_dir, "frame_*.png")
+        frames = sorted(glob.glob(frame_pattern))
+        
+        if not frames:
+            print(f"Render Server: No frames found in {frames_dir} for MP4 creation")
+            return
+            
+        # Determine frame rate from the blend file (default to 24 fps if not found)
+        fps = 24
+        
+        # Determine output file path based on location setting
+        if location == 'frames':
+            # Save in the same directory as the frames
+            output_dir = frames_dir
+        elif location == 'root' and root_dir:
+            # Save in the root output directory
+            output_dir = root_dir
+        else:
+            # Default: Save in the parent directory (one level up)
+            output_dir = os.path.dirname(frames_dir)
+        
+        # Set the full output path
+        output_mp4 = os.path.join(output_dir, f"{job_id}_render.mp4")
+        
+        # Ensure output directory exists
+        os.makedirs(output_dir, exist_ok=True)
+        
+        print(f"Render Server: MP4 will be saved to: {output_mp4}")
+        
+        # Build ffmpeg command based on codec and quality
+        cmd = ['ffmpeg', '-y', '-framerate', str(fps)]
+        
+        # Input frames pattern
+        cmd.extend(['-pattern_type', 'glob', '-i', frame_pattern])
+        
+        # Set codec-specific options
+        if codec == 'h264':
+            # H.264 settings
+            crf = '18' if quality == 'high' else '23' if quality == 'medium' else '28'
+            cmd.extend(['-c:v', 'libx264', '-crf', crf, '-pix_fmt', 'yuv420p'])
+        elif codec == 'hevc':
+            # H.265/HEVC settings
+            crf = '22' if quality == 'high' else '28' if quality == 'medium' else '34'
+            cmd.extend(['-c:v', 'libx265', '-crf', crf, '-pix_fmt', 'yuv420p'])
+        elif codec == 'prores':
+            # ProRes settings
+            profile = '3' if quality == 'high' else '2' if quality == 'medium' else '1'
+            cmd.extend(['-c:v', 'prores_ks', '-profile:v', profile])
+        else:
+            # Fallback to H.264
+            cmd.extend(['-c:v', 'libx264', '-crf', '23', '-pix_fmt', 'yuv420p'])
+        
+        # Output file
+        cmd.append(output_mp4)
+        
+        # Execute ffmpeg command
+        print(f"Render Server: Running ffmpeg command: {' '.join(cmd)}")
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+        
+        if process.returncode == 0:
+            print(f"Render Server: Successfully created MP4 video for job '{job_id}': {output_mp4}")
+        else:
+            print(f"Render Server: Error creating MP4 video: {stderr.decode()}")
+            
+            # Fallback approach if ffmpeg fails - try simpler command
+            if process.returncode != 0:
+                print("Render Server: Trying fallback ffmpeg command...")
+                fallback_cmd = [
+                    'ffmpeg', '-y', '-framerate', str(fps),
+                    '-pattern_type', 'glob', '-i', frame_pattern,
+                    '-c:v', 'libx264', '-pix_fmt', 'yuv420p', output_mp4
+                ]
+                fallback_process = subprocess.Popen(fallback_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                fallback_stdout, fallback_stderr = fallback_process.communicate()
+                
+                if fallback_process.returncode == 0:
+                    print(f"Render Server: Fallback MP4 creation successful: {output_mp4}")
+                else:
+                    print(f"Render Server: Fallback MP4 creation failed: {fallback_stderr.decode()}")
+    
+    except Exception as e:
+        print(f"Render Server: Exception during MP4 creation: {e}")
+        traceback.print_exc()
+
 def check_for_stalled_jobs():
     """Check for jobs that appear to be stalled and might need intervention."""
     with CLIENT_LOCK:
@@ -814,8 +1003,27 @@ class RENDERSERVER_OT_start_server(bpy.types.Operator):
                                                     print(f"Render Server: Job '{job_id}' completed!")
                                                     job["end_time"] = datetime.now()
                                                     job["status"] = "completed"
+                                                    
+                                                    # Get the output directory
+                                                    job_output_dir = os.path.dirname(output_path)
+                                                    
                                                     # Remove blend data now that job is done to free memory
                                                     job.pop("blend_data", None)
+                                                    
+                                                    # Check if video creation is enabled in preferences
+                                                    # We can't access context here, so we use a delayed approach
+                                                    job["create_mp4_requested"] = True
+                                                    job["mp4_output_dir"] = job_output_dir
+                                                    
+                                                    # Schedule MP4 creation in a separate thread
+                                                    def delayed_mp4_creation():
+                                                        time.sleep(2)  # Give a moment for things to settle
+                                                        create_mp4_check(job_id)
+                                                        
+                                                    threading.Thread(
+                                                        target=delayed_mp4_creation,
+                                                        daemon=True
+                                                    ).start()
 
                                             else:
                                                 # This might happen with network retries, usually safe to ignore if file was overwritten.
@@ -1896,6 +2104,18 @@ class RENDERSERVER_PT_main_panel(bpy.types.Panel):
                 col.label(text="Next Job Configuration:")
                 col.prop(props, "frame_chunks")
                 col.prop(props, "pack_textures")
+                
+                # Video creation options
+                video_col = col.column()
+                video_col.prop(props, "create_video")
+                
+                # Only show codec and quality options if video creation is enabled
+                if props.create_video:
+                    video_options = video_col.column(align=True)
+                    video_options.prop(props, "video_location")
+                    video_options.prop(props, "video_codec")
+                    video_options.prop(props, "video_quality")
+                
                 # Display scene frame range info
                 row = col.row()
                 row.label(text=f"Scene Range: {context.scene.frame_start} - {context.scene.frame_end} (Step: {context.scene.frame_step})")
