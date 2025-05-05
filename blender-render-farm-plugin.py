@@ -12,18 +12,18 @@ read into memory, and the temporary file is deleted. The in-memory data
 is sent to clients.
 
 Author: Claude (Modified by AI Assistant, Refactored)
-License: GPL v3
+License: Apache 2.0
 """
 
 bl_info = {
-    "name": "Minimal Render Server (In-Memory) v1.3", # Version bump for refactor
-    "author": "Claude (Modified by AI Assistant, Refactored)",
+    "name": "MicroFram: Render Farm Server v1.3", # Version bump for refactor
+    "author": "Mariel Martinex, Using AI tools",
     "version": (1, 3, 0),
     # --- Updated for Blender 4.x ---
     "blender": (4, 0, 0),
     # ---
     "location": "Render Properties > Render Server",
-    "description": "Minimal server (loads blend to memory before sending)",
+    "description": "Minimal Render Farm",
     "warning": "Job creation reads the entire blend file into memory and can freeze Blender temporarily. Requires client script.",
     "doc_url": "",
     "category": "Render",
@@ -332,6 +332,54 @@ def create_mp4_from_frames(frames_dir, codec='h264', quality='medium', job_id='u
         print(f"Render Server: Exception during MP4 creation: {e}")
         traceback.print_exc()
 
+def update_job_json(job_id):
+    """
+    Updates the JSON file for a job with the current status and progress.
+    This function should be called whenever a job's status changes.
+    The JSON file is stored one level up from the job's output directory.
+    """
+    try:
+        with CLIENT_LOCK:
+            job = ACTIVE_JOBS.get(job_id)
+            if not job:
+                print(f"Render Server: Cannot update JSON for job '{job_id}', job not found")
+                return False
+                
+            # Get the job's output directory
+            prefs = bpy.context.preferences.addons[__name__].preferences
+            output_dir = bpy.path.abspath(prefs.output_directory)
+            
+            # Store JSON one level up from the job directory
+            json_path = os.path.join(output_dir, f"{job_id}_info.json")
+            
+            # Make sure directory exists
+            os.makedirs(output_dir, exist_ok=True)
+            
+            # Create a copy of job data without the binary blend_data for JSON serialization
+            job_json_data = {k: v for k, v in job.items() if k != "blend_data"}
+            
+            # Convert any datetime objects to strings
+            for key, value in job_json_data.items():
+                if isinstance(value, datetime):
+                    job_json_data[key] = value.strftime("%Y-%m-%d %H:%M:%S")
+            
+            # Add additional progress info
+            total_frames = len(job.get("all_frames", []))
+            completed_frames = len(job.get("completed_frames", []))
+            job_json_data["progress_percentage"] = (completed_frames / total_frames) * 100.0 if total_frames > 0 else 0.0
+            job_json_data["last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            # Save job data as JSON file
+            with open(json_path, 'w') as json_file:
+                json.dump(job_json_data, json_file, indent=4)
+            print(f"  Job info saved to: {json_path}")
+            return True
+            
+    except Exception as e:
+        print(f"Render Server: Error updating JSON for job '{job_id}': {e}")
+        traceback.print_exc()
+        return False
+
 def check_for_stalled_jobs():
     """Check for jobs that appear to be stalled and might need intervention."""
     with CLIENT_LOCK:
@@ -368,6 +416,9 @@ def check_for_stalled_jobs():
                     job["stalled_detected_time"] = now
                     print(f"Render Server: Job '{job_id}' appears to be stalled. {completed_frames}/{total_frames} frames completed, {unassigned_frames} unassigned, {assigned_frames} assigned.")
                     stalled_jobs.append(job_id)
+                    
+                    # Update the JSON file with stalled status
+                    update_job_json(job_id)
         
         return stalled_jobs
 
@@ -389,7 +440,17 @@ def update_job_progress_display(context: bpy.types.Context):
                 completed = len(job.get("completed_frames", []))
                 props.total_frames = total
                 props.completed_frames_count = completed
-                props.job_progress = (completed / total) * 100.0 if total > 0 else 0.0
+                progress = (completed / total) * 100.0 if total > 0 else 0.0
+                props.job_progress = progress
+                
+                # Update JSON file with progress if job is active
+                # Only update every 5% change to avoid excessive writes
+                if job.get("status") == "active":
+                    last_progress = job.get("last_json_progress", 0)
+                    # Update JSON if progress has changed by at least 5% or it's the first update
+                    if "last_json_progress" not in job or abs(progress - last_progress) >= 5.0:
+                        job["last_json_progress"] = progress
+                        update_job_json(job_id)
                 
                 # Check for stalled jobs while we're updating the UI
                 check_for_stalled_jobs()
@@ -1010,10 +1071,15 @@ class RENDERSERVER_OT_start_server(bpy.types.Operator):
                                                     # Remove blend data now that job is done to free memory
                                                     job.pop("blend_data", None)
                                                     
+                                                    # Set MP4 info before updating JSON
+                                                    job["mp4_output_dir"] = job_output_dir
+                                                    
+                                                    # Update the JSON file with completed status
+                                                    update_job_json(job_id)
+                                                    
                                                     # Check if video creation is enabled in preferences
                                                     # We can't access context here, so we use a delayed approach
                                                     job["create_mp4_requested"] = True
-                                                    job["mp4_output_dir"] = job_output_dir
                                                     
                                                     # Schedule MP4 creation in a separate thread
                                                     def delayed_mp4_creation():
@@ -1591,7 +1657,8 @@ class RENDERSERVER_OT_send_scene(bpy.types.Operator):
                      raise ValueError("Job ID, blend data, or filename missing before registration.")
 
                 with CLIENT_LOCK:
-                    ACTIVE_JOBS[self._job_id] = {
+                    # Create job data structure
+                    job_data = {
                         "id": self._job_id,
                         "all_frames": list(self.all_frames), # Use copy
                         "unassigned_frames": list(self.all_frames), # Use copy, will be consumed
@@ -1603,9 +1670,26 @@ class RENDERSERVER_OT_send_scene(bpy.types.Operator):
                         "start_time": datetime.now(),
                         "end_time": None, # Will be set on completion
                         "status": "active", # Mark as active immediately
+                        # Additional metadata for tracking
+                        "project_name": os.path.splitext(os.path.basename(bpy.data.filepath))[0] if bpy.data.filepath else "untitled",
+                        "frame_range": f"{context.scene.frame_start}-{context.scene.frame_end}:{context.scene.frame_step}",
+                        "resolution": f"{context.scene.render.resolution_x}x{context.scene.render.resolution_y} ({context.scene.render.resolution_percentage}%)",
+                        "engine": context.scene.render.engine,
+                        "creation_timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     }
+                    
+                    # Add job to active jobs
+                    ACTIVE_JOBS[self._job_id] = job_data
                     self.job_added_successfully = True # Mark success *after* adding
 
+                    # Generate JSON file with job info for tracking/queuing using the helper function
+                    try:
+                        update_job_json(self._job_id)
+                    except Exception as e:
+                        print(f"  Warning: Could not save job info JSON file: {e}")
+                        traceback.print_exc()
+                        # Continue with job creation even if JSON file can't be saved
+                    
                     # Update UI property immediately to show the new active job
                     props = getattr(context.scene, "render_server", None)
                     if props:
@@ -1788,6 +1872,9 @@ class RENDERSERVER_OT_cancel_job(bpy.types.Operator):
                 print(f"Render Server: Job '{job_id}' has been cancelled")
                 cancelled = True
                 
+                # Update the JSON file with cancelled status
+                update_job_json(job_id)
+                
                 # Optional: Notify any clients with assigned frames
                 # This happens naturally when they try to report frames or request new ones
             else:
@@ -1956,6 +2043,9 @@ class RENDERSERVER_OT_force_job_complete(bpy.types.Operator):
                 
                 print(f"Render Server: Job '{job_id}' has been force-completed with {completed_frames}/{total_frames} frames done")
                 completed = True
+                
+                # Update the JSON file with completed status
+                update_job_json(job_id)
             else:
                 if not job:
                     print(f"Render Server: Cannot force-complete job '{job_id}', not found")
@@ -2035,7 +2125,7 @@ class RENDERSERVER_PT_main_panel(bpy.types.Panel):
                          ip_address = "Could not determine IP"
 
                 row = box.row()
-                row.label(text=f"Server IP Address (Approx): {ip_address}")
+                row.label(text=f"Server IP Address: {ip_address}:{prefs.server_port}")
             except Exception as ip_e:
                  print(f"Render Server: UI Error - Could not determine server IP: {ip_e}")
                  row = box.row()
