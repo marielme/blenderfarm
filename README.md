@@ -17,9 +17,9 @@ You can use the Blender add-on to run a server and Client Script:
 
 ![Blender Server Add-on](assets/Blender_UI.jpg)
 
-### (or) Python Server
+### (or) Python version
 
-Using a Stand Alone python server (with web interface) and run the client again
+Using a Stand Alone python server (with web interface) and run client
 
 - **Server (`microfarm_server.py`)**: A Python-based server with web interface that doesn't require Blender 
 - **Client (`microfarm_client.py`)**: A Python script that connects to the server and renders assigned frames
