@@ -17,6 +17,8 @@
             --input-bg: white;
             --input-color: #333;
             --input-border: #ddd;
+            --sidebar-width: 340px; /* Define sidebar width */
+            --layout-gap: 30px;
         }
 
         /* Dark mode variables */
@@ -59,7 +61,7 @@
             transition: background-color 0.3s, color 0.3s;
         }
         .container {
-            max-width: 1200px;
+            max-width: 1600px; /* Wider max-width for dashboard */
             margin: 0 auto;
             background-color: var(--container-bg);
             padding: 20px;
@@ -69,8 +71,29 @@
         h1, h2, h3 {
             color: var(--text-color);
         }
+
+        /* NEW: Dashboard Layout */
+        .dashboard-layout {
+            display: grid;
+            grid-template-columns: var(--sidebar-width) 1fr; /* Sidebar and Main Content */
+            gap: var(--layout-gap);
+            margin-top: 20px; /* Add some space below title */
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: var(--layout-gap); /* Space between sections in sidebar */
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: var(--layout-gap); /* Space between sections in main content */
+        }
+
         .section {
-            margin-bottom: 30px;
+           /* Removed margin-bottom, using gap in parent */
             padding: 15px;
             border: 1px solid var(--border-color);
             border-radius: 5px;
@@ -191,7 +214,7 @@
         .refresh-button {
             background-color: #2196f3;
             padding: 10px 15px;
-            margin-bottom: 20px;
+            /* margin-bottom: 20px; Removed, positioning handled differently */
         }
         .job-status {
             display: inline-block;
@@ -218,18 +241,21 @@
         .status-cancelled {
             background-color: #f44336;
         }
-        
+
         /* MP4 Controls Styles */
         .mp4-controls {
             margin-top: 15px;
             padding-top: 10px;
-            border-top: 1px solid #eee;
+            border-top: 1px solid var(--border-color); /* Use variable */
         }
         .mp4-select {
             padding: 5px;
             border-radius: 3px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--input-border); /* Use variable */
+            background-color: var(--input-bg); /* Use variable */
+            color: var(--input-color); /* Use variable */
             width: 100%;
+            box-sizing: border-box;
         }
         .create-mp4 {
             background-color: #673ab7; /* Purple for MP4 */
@@ -263,7 +289,7 @@
             background-color: #ff9800; /* Orange */
             color: white;
         }
-        
+
         /* Toggle button and preview styles */
         .toggle-button {
             font-size: 0.8em;
@@ -279,7 +305,7 @@
         .job-preview img, .job-preview video {
             max-width: 100%;
             max-height: 150px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border-color); /* Use variable */
             border-radius: 3px;
             cursor: pointer;
             background-color: #000;
@@ -360,7 +386,7 @@
             border-bottom: 10px solid transparent;
             border-left: 15px solid white;
         }
-        
+
         /* Dark mode toggle button */
         .theme-toggle {
             position: fixed;
@@ -380,23 +406,23 @@
             z-index: 1000;
             transition: all 0.3s ease;
         }
-        
+
         .theme-toggle:hover {
             transform: translateY(-2px);
         }
-        
+
         .theme-toggle .icon {
             width: 16px;
             height: 16px;
             display: inline-block;
         }
-        
+
         /* Sun icon for dark mode toggle */
         .light-icon {
             background: radial-gradient(circle, transparent 50%, #f1c40f 50%);
             position: relative;
         }
-        
+
         .light-icon::after {
             content: '';
             position: absolute;
@@ -408,7 +434,7 @@
             box-shadow: 0 0 0 0 #f1c40f;
             transform-origin: center;
         }
-        
+
         .light-icon::before {
             content: '';
             position: absolute;
@@ -420,7 +446,7 @@
             box-shadow: 0 0 0 0 #f1c40f;
             transform-origin: center;
         }
-        
+
         /* Moon icon for light mode toggle */
         .dark-icon {
             border-radius: 50%;
@@ -429,132 +455,189 @@
             background: transparent;
             border: none;
         }
+
+        /* NEW: Header Controls Styling */
+        .header-controls {
+            display: flex;
+            justify-content: space-between; /* Pushes refresh button to the right */
+            align-items: center;
+            margin-bottom: 15px; /* Space below controls */
+            /* Add padding/margin if needed */
+        }
+
+
+        /* NEW: Responsive Adjustments */
+        @media (max-width: 992px) { /* Adjust breakpoint as needed */
+            .dashboard-layout {
+                grid-template-columns: 1fr; /* Stack columns */
+            }
+             :root {
+                --sidebar-width: 100%; /* Not needed in single column */
+            }
+        }
+
+         @media (max-width: 768px) { /* Adjust breakpoint as needed */
+            .job-grid, .client-grid {
+                 grid-template-columns: 1fr; /* Single column cards on smaller screens */
+             }
+             h1 {
+                 font-size: 1.8em; /* Slightly smaller title */
+             }
+             .container {
+                 padding: 15px;
+             }
+             .theme-toggle {
+                 top: 15px;
+                 right: 15px;
+                 padding: 6px 10px;
+                 font-size: 12px;
+             }
+             .theme-toggle .icon {
+                 width: 14px;
+                 height: 14px;
+             }
+         }
+
+
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- Title and Theme Toggle remain outside the main layout grid -->
         <h1>MicroFarm: Blender Render Farm Server</h1>
-        
         <button id="themeToggle" class="theme-toggle">
             <span class="icon dark-icon"></span>
             <span>Toggle Theme</span>
         </button>
-        
-        <button id="refreshButton" class="refresh-button">Refresh Data</button>
-        
-        <div class="section">
-            <h2>Upload Blend File</h2>
-            <form id="uploadForm">
-                <div class="form-group">
-                    <label for="blendFile">Blend File</label>
-                    <input type="file" id="blendFile" name="blend_file" accept=".blend" required>
-                </div>
-                <div class="form-group">
-                    <label for="projectName">Project Name</label>
-                    <input type="text" id="projectName" name="project_name" placeholder="Project name">
-                </div>
-                <div class="form-group">
-                    <label for="frameStart">Start Frame</label>
-                    <input type="number" id="frameStart" name="frame_start" value="1" min="1" required>
-                </div>
-                <div class="form-group">
-                    <label for="frameEnd">End Frame</label>
-                    <input type="number" id="frameEnd" name="frame_end" value="100" min="1" required>
-                </div>
-                <div class="form-group">
-                    <label for="frameStep">Frame Step</label>
-                    <input type="number" id="frameStep" name="frame_step" value="1" min="1" required>
-                </div>
-                <div class="form-group">
-                    <label for="frameChunkSize">Frames Per Chunk</label>
-                    <input type="number" id="frameChunkSize" name="frame_chunk_size" value="10" min="1" required>
-                </div>
-                <div class="form-group">
-                    <label for="camera">Render Camera</label>
-                    <input type="text" id="camera" name="camera" value="Camera" placeholder="Camera name (default: Camera)">
-                </div>
-                <div class="form-group form-check">
-                    <input type="checkbox" id="queueImmediately" name="queue_immediately" checked>
-                    <label for="queueImmediately">Start Job Immediately</label>
-                </div>
-                <button type="submit" class="submit-button">Upload and Create Job</button>
-                <div id="uploadError" class="error-message"></div>
-            </form>
-        </div>
-        
-        <div class="section">
-            <h2>Active Jobs</h2>
-            <div id="activeJobsGrid" class="job-grid">
-                <p>Loading jobs...</p>
-            </div>
-        </div>
-        
-        
-        <div class="section">
-            <h2>Queued Jobs</h2>
-            <div id="queuedJobsGrid" class="job-grid">
-                <p>Loading queued jobs...</p>
-            </div>
-        </div>
-        
-        <div class="section">
-            <h2>Completed Jobs <button id="toggleCompletedJobs" class="toggle-button">Show/Hide</button></h2>
-            <div id="completedJobsGrid" class="job-grid" style="display: none;">
-                <p>Loading completed jobs...</p>
-            </div>
-        </div>
 
-        <div class="section">
-            <h2>Connected Clients</h2>
-            <div id="clientsGrid" class="client-grid">
-                <p>Loading clients...</p>
-            </div>
-        </div>
-        
-    </div>
+        <!-- NEW: Dashboard Layout Wrapper -->
+        <div class="dashboard-layout">
+
+            <!-- NEW: Sidebar Column -->
+            <aside class="sidebar">
+                <div class="section" id="section-upload">
+                    <h2>Upload Blend File</h2>
+                    <form id="uploadForm">
+                        <div class="form-group">
+                            <label for="blendFile">Blend File</label>
+                            <input type="file" id="blendFile" name="blend_file" accept=".blend" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="projectName">Project Name</label>
+                            <input type="text" id="projectName" name="project_name" placeholder="Project name (optional)">
+                        </div>
+                        <div class="form-group">
+                            <label for="frameStart">Start Frame</label>
+                            <input type="number" id="frameStart" name="frame_start" value="1" min="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="frameEnd">End Frame</label>
+                            <input type="number" id="frameEnd" name="frame_end" value="100" min="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="frameStep">Frame Step</label>
+                            <input type="number" id="frameStep" name="frame_step" value="1" min="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="frameChunkSize">Frames Per Client (Chunks)</label>
+                            <input type="number" id="frameChunkSize" name="frame_chunk_size" value="10" min="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="camera">Render Camera</label>
+                            <input type="text" id="camera" name="camera" value="Camera" placeholder="Camera name (default: Scene Default)">
+                        </div>
+                        <div class="form-group form-check">
+                            <input type="checkbox" id="queueImmediately" name="queue_immediately" checked>
+                            <label for="queueImmediately">Start Job Immediately</label>
+                        </div>
+                        <button type="submit" class="submit-button">Upload and Create Job</button>
+                        <div id="uploadError" class="error-message"></div>
+                    </form>
+                </div>
+
+                <div class="section" id="section-clients">
+                    <h2>Connected Clients</h2>
+                    <div id="clientsGrid" class="client-grid">
+                        <p>Loading clients...</p>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- NEW: Main Content Column -->
+            <main class="main-content">
+
+                 <!-- NEW: Header Controls within Main Content -->
+                 <div class="header-controls">
+                     <h2>Job Status</h2> <!-- Maybe a general title for this area -->
+                     <button id="refreshButton" class="refresh-button">Refresh Data</button>
+                 </div>
+
+                <div class="section" id="section-active-jobs">
+                    <h2>Active Jobs</h2>
+                    <div id="activeJobsGrid" class="job-grid">
+                        <p>Loading jobs...</p>
+                    </div>
+                </div>
+
+                <div class="section" id="section-queued-jobs">
+                    <h2>Queued Jobs</h2>
+                    <div id="queuedJobsGrid" class="job-grid">
+                        <p>Loading queued jobs...</p>
+                    </div>
+                </div>
+
+                <div class="section" id="section-completed-jobs">
+                    <h2>Completed Jobs <button id="toggleCompletedJobs" class="toggle-button">Hide</button></h2>
+                    <div id="completedJobsGrid" class="job-grid">
+                        <p>Loading completed jobs...</p>
+                    </div>
+                </div>
+            </main>
+
+        </div> <!-- End Dashboard Layout -->
+
+    </div> <!-- End Container -->
 
 
-    
     <script>
+        // --- NO CHANGES TO JAVASCRIPT NEEDED FOR THIS LAYOUT REORGANIZATION ---
         // Refresh data on page load and every 5 seconds
         document.addEventListener('DOMContentLoaded', function() {
             refreshData();
             setInterval(refreshData, 5000);
-            
+
             // Initialize theme based on stored preference or system preference
             initializeTheme();
-            
+
             // Add event listener for manual refresh
             document.getElementById('refreshButton').addEventListener('click', refreshData);
-            
+
             // Add event listener for form submission
             document.getElementById('uploadForm').addEventListener('submit', function(e) {
                 e.preventDefault();
                 uploadBlendFile();
             });
-            
+
             // Add event listener for theme toggle
             document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-            
+
             // Add event listener for completed jobs toggle
             document.getElementById('toggleCompletedJobs').addEventListener('click', function() {
                 const grid = document.getElementById('completedJobsGrid');
-                if (grid.style.display === 'none') {
-                    grid.style.display = 'grid';
-                    this.textContent = 'Hide';
-                } else {
-                    grid.style.display = 'none';
-                    this.textContent = 'Show';
-                }
+                const isHidden = grid.style.display === 'none';
+                grid.style.display = isHidden ? 'grid' : 'none';
+                this.textContent = isHidden ? 'Hide' : 'Show';
+                // If showing, maybe refresh just in case? Optional.
+                if (isHidden) { refreshData(); }
             });
         });
-        
+
         // Function to initialize theme
         function initializeTheme() {
             const savedTheme = localStorage.getItem('theme');
             const systemDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
             const themeToggle = document.getElementById('themeToggle');
-            
+
             // If user has a saved preference, use that
             if (savedTheme === 'dark') {
                 document.documentElement.classList.add('dark-mode');
@@ -566,8 +649,11 @@
                 // Otherwise, use system preference
                 document.documentElement.classList.add('dark-mode');
                 updateThemeToggle(true);
+            } else {
+                 // Default to light if nothing else matches
+                 updateThemeToggle(false);
             }
-            
+
             // Listen for system theme changes
             window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
                 // Only apply system changes if user hasn't set a preference
@@ -582,20 +668,20 @@
                 }
             });
         }
-        
+
         // Function to toggle theme
         function toggleTheme() {
             const isDarkMode = document.documentElement.classList.toggle('dark-mode');
             updateThemeToggle(isDarkMode);
             localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
         }
-        
+
         // Function to update theme toggle button
         function updateThemeToggle(isDarkMode) {
             const themeToggle = document.getElementById('themeToggle');
             const iconSpan = themeToggle.querySelector('.icon');
             const textSpan = themeToggle.querySelector('span:not(.icon)');
-            
+
             if (isDarkMode) {
                 iconSpan.className = 'icon light-icon';
                 textSpan.textContent = 'Light Mode';
@@ -604,83 +690,102 @@
                 textSpan.textContent = 'Dark Mode';
             }
         }
-        
+
         // Function to refresh data
         function refreshData() {
             fetch('/api/status')
-                .then(response => response.json())
+                .then(response => {
+                     if (!response.ok) {
+                         throw new Error(`HTTP error! status: ${response.status}`);
+                     }
+                     return response.json();
+                })
                 .then(data => {
                     updateClients(data.clients);
                     updateJobs(data.active_jobs, 'activeJobsGrid');
                     updateJobs(data.queued_jobs, 'queuedJobsGrid');
-                    updateJobs(data.completed_jobs, 'completedJobsGrid');
+                    // Only update completed if visible or first load
+                    const completedGrid = document.getElementById('completedJobsGrid');
+                     if (completedGrid.style.display !== 'none' || !completedGrid.innerHTML.includes('job-card')) {
+                         updateJobs(data.completed_jobs, 'completedJobsGrid');
+                     }
                 })
-                .catch(error => console.error('Error fetching data:', error));
+                .catch(error => {
+                     console.error('Error fetching data:', error);
+                     // Optionally display an error to the user on the page
+                     // Example: document.getElementById('someErrorDisplayArea').textContent = 'Failed to load data. Please try refreshing.';
+                });
         }
-        
+
         // Function to update clients display
         function updateClients(clients) {
             const grid = document.getElementById('clientsGrid');
-            
-            if (clients.length === 0) {
+             if (!grid) return; // Prevent errors if element doesn't exist
+
+            if (!clients || clients.length === 0) {
                 grid.innerHTML = '<p>No clients connected</p>';
                 return;
             }
-            
+
             let html = '';
             clients.forEach(client => {
-                const statusClass = `status-${client.status}`;
+                const statusClass = `status-${client.status?.toLowerCase() || 'unknown'}`; // Added safety for undefined status
+                const lastPing = client.last_ping ? new Date(client.last_ping).toLocaleString() : 'N/A'; // Format date/time
                 html += `
                     <div class="client-card">
-                        <h4>${client.name}</h4>
-                        <p><strong>IP:</strong> ${client.ip}</p>
-                        <p><strong>Status:</strong> <span class="client-status ${statusClass}">${client.status}</span></p>
-                        <p><strong>Last Activity:</strong> ${client.last_ping}</p>
+                        <h4>${client.name || 'Unnamed Client'}</h4>
+                        <p><strong>IP:</strong> ${client.ip || 'N/A'}</p>
+                        <p><strong>Status:</strong> <span class="client-status ${statusClass}">${client.status || 'Unknown'}</span></p>
+                        <p><strong>Last Seen:</strong> ${lastPing}</p>
                         ${client.current_job_id ? `<p><strong>Job:</strong> ${client.current_job_id}</p>` : ''}
-                        ${client.current_frames.length > 0 ? `<p><strong>Frames:</strong> ${client.current_frames.join(', ')}</p>` : ''}
+                        ${client.current_frames && client.current_frames.length > 0 ? `<p><strong>Frames:</strong> ${client.current_frames.join(', ')}</p>` : ''}
                     </div>
                 `;
             });
-            
+
             grid.innerHTML = html;
         }
-        
+
         // Function to update jobs display
         function updateJobs(jobs, gridId) {
             const grid = document.getElementById(gridId);
-            
-            if (jobs.length === 0) {
+             if (!grid) return; // Prevent errors if element doesn't exist
+
+            if (!jobs || jobs.length === 0) {
                 grid.innerHTML = '<p>No jobs in this category</p>';
                 return;
             }
-            
+
             let html = '';
             jobs.forEach(job => {
-                // Use display_status if it exists, otherwise use status
-                const displayStatus = job.display_status || job.status;
+                if (!job || !job.id) return; // Skip invalid job data
+
+                const displayStatus = (job.display_status || job.status)?.toLowerCase() || 'unknown';
                 const statusClass = `status-${displayStatus}`;
-                
-                // Create a nicer display label for the status
-                let statusLabel = displayStatus;
-                if (displayStatus === "pending") {
-                    statusLabel = "Pending Clients";
-                } else if (displayStatus === "restart") {
-                    statusLabel = "Needs Restart";
-                }
-                
-                // Preview, links, and controls for completed jobs
+
+                let statusLabel = displayStatus.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()); // Nicer formatting
+                if (displayStatus === "pending") statusLabel = "Pending Clients";
+                else if (displayStatus === "restart") statusLabel = "Needs Restart";
+                else if (displayStatus === "pending_restart") statusLabel = "Pending Restart";
+
+
+                const startTime = job.start_time ? new Date(job.start_time).toLocaleString() : 'N/A';
+                const endTime = job.end_time ? new Date(job.end_time).toLocaleString() : '';
+                const progress = job.progress !== undefined ? job.progress : 0; // Default progress to 0 if undefined
+
+
+                // Preview, links, and controls for completed/cancelled jobs
                 let jobExtras = '';
                 if (job.status === 'completed' || job.status === 'cancelled') {
-                    // MP4 controls
-                    let mp4Controls = `
+                     let mp4Controls = `
                         <div class="mp4-controls">
                             <h5>Create MP4 Video</h5>
                             <div class="form-group">
                                 <label for="codec-${job.id}">Codec:</label>
                                 <select id="codec-${job.id}" class="mp4-select">
-                                    <option value="h264">H.264</option>
-                                    <option value="hevc">H.265/HEVC</option>
-                                    <option value="prores">ProRes</option>
+                                    <option value="h264">H.264 (Fast, Good Compatibility)</option>
+                                    <option value="hevc">H.265/HEVC (Smaller File)</option>
+                                    <option value="prores">ProRes (High Quality)</option>
                                 </select>
                             </div>
                             <div class="form-group">
@@ -695,212 +800,232 @@
                             <div id="mp4-status-${job.id}" class="mp4-status"></div>
                         </div>
                     `;
-                    
-                    // Job preview (MP4 or first frame)
+
                     let previewHtml = '';
-                    if (job.mp4_created) {
-                        // Use a div with background instead of relying on video tag for preview
+                     const previewUrl = `/api/jobs/${job.id}/preview`;
+                     const thumbnailUrl = `/api/jobs/${job.id}/thumbnail`; // Assuming a separate thumbnail endpoint
+
+                    if (job.mp4_created && job.mp4_path) {
+                         // Use thumbnail for preview, link opens video/preview endpoint
                         previewHtml = `
                             <div class="job-preview">
-                                <div class="video-container" onclick="openVideoPreview('${job.id}')">
-                                    <img src="/api/jobs/${job.id}/thumbnail" alt="Video thumbnail" class="video-thumbnail">
+                                <div class="video-container" onclick="openVideoPreview('${job.id}')" title="Click to view video">
+                                    <img src="${thumbnailUrl}" alt="Video thumbnail" class="video-thumbnail" onerror="this.style.display='none'">  <!-- Hide if thumbnail fails -->
                                     <div class="play-button"></div>
                                     <div class="video-badge">VIDEO</div>
                                 </div>
                             </div>
                         `;
-                        
-                        // Log for debugging MP4 issues
-                        console.log(`MP4 path for job ${job.id}: ${job.mp4_path}`);
                     } else {
-                        // Use image tag for regular previews
+                         // Image preview linking to full image
                         previewHtml = `
                             <div class="job-preview">
-                                <a href="/api/jobs/${job.id}/preview" target="_blank">
-                                    <img src="/api/jobs/${job.id}/preview" alt="Preview" title="Click to enlarge"/>
+                                <a href="${previewUrl}" target="_blank">
+                                    <img src="${previewUrl}" alt="Preview (First Frame)" title="Click to enlarge" onerror="this.style.display='none'"/> <!-- Hide if preview fails -->
                                 </a>
                             </div>
                         `;
                     }
-                    
-                    // Job links section
+
                     let linksHtml = `
                         <div class="job-links">
                             <a href="/api/jobs/${job.id}/files" target="_blank">View Files</a>
-                            ${job.mp4_path ? `<a href="/api/jobs/${job.id}/mp4" target="_blank">Download MP4</a>` : ''}
+                            ${job.mp4_path ? `<a href="/api/jobs/${job.id}/mp4" target="_blank" download>Download MP4</a>` : ''}
                         </div>
                     `;
-                    
-                    // Delete button
+
                     let deleteButton = `
-                        <button class="delete-job" onclick="deleteJob('${job.id}')">Delete Job</button>
+                        <button class="delete-job" onclick="deleteJob('${job.id}')">Delete Job Data</button>
                     `;
-                    
-                    // Combine all elements
+
                     jobExtras = previewHtml + mp4Controls + linksHtml + deleteButton;
                 }
-                
+
                 html += `
                     <div class="job-card">
-                        <h4>${job.project_name}</h4>
+                        <h4>${job.project_name || `Job ${job.id.substring(0, 8)}`}</h4>
                         <p><strong>ID:</strong> ${job.id}</p>
                         <p><strong>Status:</strong> <span class="job-status ${statusClass}">${statusLabel}</span></p>
-                        <p><strong>Frames:</strong> ${job.frame_range}</p>
-                        <p><strong>Progress:</strong> ${job.completed_frames}/${job.total_frames}</p>
+                        <p><strong>Frames:</strong> ${job.frame_range || 'N/A'}</p>
+                        <p><strong>Progress:</strong> ${job.completed_frames !== undefined ? job.completed_frames : '?'}/${job.total_frames !== undefined ? job.total_frames : '?'}</p>
                         <div class="progress-bar">
-                            <div class="progress-value" style="width: ${job.progress}%"></div>
+                            <div class="progress-value" style="width: ${progress}%"></div>
                         </div>
-                        <p><strong>Started:</strong> ${job.start_time}</p>
-                        ${job.end_time ? `<p><strong>Ended:</strong> ${job.end_time}</p>` : ''}
-                        
+                        <p><strong>Started:</strong> ${startTime}</p>
+                        ${endTime ? `<p><strong>Ended:</strong> ${endTime}</p>` : ''}
+
                         <div class="job-controls">
-                            ${job.status === 'active' || displayStatus === 'pending' ? `
+                            ${(job.status === 'active' || displayStatus === 'pending') ? `
                                 <button class="cancel" onclick="cancelJob('${job.id}')">Cancel</button>
                                 <button class="complete" onclick="forceCompleteJob('${job.id}')">Force Complete</button>
                             ` : ''}
-                            ${job.status === 'queued' || job.status === 'pending_restart' ? `
+                            ${(job.status === 'queued' || displayStatus === 'pending_restart') ? `
                                 <button class="activate" onclick="activateJob('${job.id}')">Activate</button>
                                 <button class="cancel" onclick="cancelJob('${job.id}')">Cancel</button>
                             ` : ''}
                         </div>
-                        
+
                         ${jobExtras}
                     </div>
                 `;
             });
-            
+
             grid.innerHTML = html;
         }
-        
+
         // Function to upload blend file
         function uploadBlendFile() {
             const form = document.getElementById('uploadForm');
             const formData = new FormData(form);
-            
-            // Validate file
+            const submitButton = form.querySelector('.submit-button');
+            const uploadError = document.getElementById('uploadError');
+            uploadError.textContent = ''; // Clear previous errors
+
+            // Basic file validation
             const blendFile = document.getElementById('blendFile').files[0];
             if (!blendFile) {
-                document.getElementById('uploadError').textContent = 'Please select a .blend file';
+                uploadError.textContent = 'Please select a .blend file.';
                 return;
             }
-            
-            // Validate form fields
+             if (!blendFile.name.toLowerCase().endsWith('.blend')) {
+                 uploadError.textContent = 'Selected file must be a .blend file.';
+                 return;
+             }
+
+            // Frame range validation
             const frameStart = parseInt(document.getElementById('frameStart').value);
             const frameEnd = parseInt(document.getElementById('frameEnd').value);
-            
+            const frameStep = parseInt(document.getElementById('frameStep').value);
+            const frameChunkSize = parseInt(document.getElementById('frameChunkSize').value);
+
+            if (isNaN(frameStart) || isNaN(frameEnd) || isNaN(frameStep) || isNaN(frameChunkSize)) {
+                 uploadError.textContent = 'Frame numbers, step, and chunk size must be valid numbers.';
+                 return;
+            }
             if (frameEnd < frameStart) {
-                document.getElementById('uploadError').textContent = 'End frame must be greater than or equal to start frame';
+                uploadError.textContent = 'End frame must be greater than or equal to start frame.';
                 return;
             }
-            
-            // Get checkbox value
-            const queueImmediately = document.getElementById('queueImmediately').checked;
-            formData.set('queue_immediately', queueImmediately.toString());
-            
-            // Clear error message
-            document.getElementById('uploadError').textContent = '';
-            
-            // Upload file
+             if (frameStep < 1 || frameChunkSize < 1) {
+                 uploadError.textContent = 'Frame step and chunk size must be at least 1.';
+                 return;
+             }
+
+            // Get checkbox value (already handled by FormData if name attribute is set)
+            // const queueImmediately = document.getElementById('queueImmediately').checked;
+            // formData.set('queue_immediately', queueImmediately.toString()); // FormData handles checkboxes correctly
+
+             // Disable button during upload
+             submitButton.disabled = true;
+             submitButton.textContent = 'Uploading...';
+
             fetch('/api/upload', {
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.json())
+            .then(response => {
+                 if (!response.ok) {
+                     // Try to get error message from response body
+                     return response.json().then(errData => {
+                         throw new Error(errData.error || `HTTP error! status: ${response.status}`);
+                     }).catch(() => {
+                          // If response is not JSON or error parsing JSON
+                         throw new Error(`HTTP error! status: ${response.status}`);
+                     });
+                 }
+                 return response.json();
+            })
             .then(data => {
-                if (data.error) {
-                    document.getElementById('uploadError').textContent = data.error;
+                if (data.error) { // Should be caught by the !response.ok check now, but keep for safety
+                    uploadError.textContent = data.error;
                 } else {
                     alert(`Job created successfully! Job ID: ${data.job_id}`);
-                    form.reset();
-                    refreshData();
+                    form.reset(); // Reset form fields
+                    refreshData(); // Refresh job lists immediately
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
-                document.getElementById('uploadError').textContent = 'An error occurred while uploading the file';
-            });
-        }
-        
-        // Function to cancel job
-        function cancelJob(jobId) {
-            if (confirm(`Are you sure you want to cancel job ${jobId}?`)) {
-                fetch(`/api/jobs/${jobId}/cancel`, {
-                    method: 'POST'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        alert(data.error);
-                    } else {
-                        refreshData();
-                    }
-                })
-                .catch(error => console.error('Error:', error));
-            }
-        }
-        
-        // Function to force complete job
-        function forceCompleteJob(jobId) {
-            if (confirm(`Are you sure you want to force-complete job ${jobId}?`)) {
-                fetch(`/api/jobs/${jobId}/force_complete`, {
-                    method: 'POST'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        alert(data.error);
-                    } else {
-                        refreshData();
-                    }
-                })
-                .catch(error => console.error('Error:', error));
-            }
-        }
-        
-        // Function to activate job
-        function activateJob(jobId) {
-            fetch(`/api/jobs/${jobId}/activate`, {
-                method: 'POST'
+                console.error('Upload Error:', error);
+                uploadError.textContent = `Upload failed: ${error.message}`;
             })
-            .then(response => response.json())
+             .finally(() => {
+                 // Re-enable button
+                 submitButton.disabled = false;
+                 submitButton.textContent = 'Upload and Create Job';
+             });
+        }
+
+        // Function to perform job actions (generic helper)
+        function performJobAction(jobId, action, confirmMessage) {
+             if (confirmMessage && !confirm(confirmMessage)) {
+                 return; // User cancelled
+             }
+
+            fetch(`/api/jobs/${jobId}/${action}`, {
+                method: 'POST',
+                 headers: {
+                    'Content-Type': 'application/json' // Optional, depending on backend
+                 }
+                 // body: JSON.stringify({}), // Optional, if backend expects a body
+            })
+            .then(response => {
+                 if (!response.ok) {
+                     return response.json().then(errData => {
+                         throw new Error(errData.error || `Action failed: ${response.status}`);
+                     }).catch(() => {
+                          throw new Error(`Action failed: ${response.status}`);
+                     });
+                 }
+                 return response.json();
+            })
             .then(data => {
-                if (data.error) {
-                    alert(data.error);
+                if (data.error) { // Should be caught above, but double check
+                    alert(`Error performing action '${action}': ${data.error}`);
                 } else {
-                    refreshData();
+                    console.log(`Job ${jobId} action '${action}' successful:`, data.message || 'OK');
+                    refreshData(); // Refresh lists after successful action
                 }
             })
-            .catch(error => console.error('Error:', error));
+            .catch(error => {
+                console.error(`Error performing action '${action}' on job ${jobId}:`, error);
+                alert(`Error performing action '${action}': ${error.message}`);
+            });
         }
-        
-        // Function to delete a job
+
+
+        // Specific action functions using the helper
+        function cancelJob(jobId) {
+            performJobAction(jobId, 'cancel', `Are you sure you want to cancel job ${jobId}?`);
+        }
+
+        function forceCompleteJob(jobId) {
+            performJobAction(jobId, 'force_complete', `Are you sure you want to force-complete job ${jobId}? This marks it as done even if frames are missing.`);
+        }
+
+        function activateJob(jobId) {
+            performJobAction(jobId, 'activate'); // No confirmation needed usually
+        }
+
         function deleteJob(jobId) {
-            if (confirm(`Are you sure you want to DELETE job ${jobId}? This will remove all files and cannot be undone.`)) {
-                fetch(`/api/jobs/${jobId}/delete`, {
-                    method: 'POST'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        alert(data.error);
-                    } else {
-                        alert(`Job ${jobId} deleted successfully!`);
-                        refreshData();
-                    }
-                })
-                .catch(error => console.error('Error:', error));
-            }
+            performJobAction(jobId, 'delete', `Are you sure you want to DELETE job ${jobId}? This will remove all associated files and cannot be undone.`);
         }
-        
+
         // Function to create MP4 video
         function createMP4(jobId) {
             const codec = document.getElementById(`codec-${jobId}`).value;
             const quality = document.getElementById(`quality-${jobId}`).value;
             const statusElement = document.getElementById(`mp4-status-${jobId}`);
-            
+             const createButton = statusElement.previousElementSibling; // Get the button element
+
+             if (!statusElement || !createButton) {
+                 console.error("Could not find MP4 status or button elements for job", jobId);
+                 return;
+             }
+
             statusElement.innerHTML = 'Starting MP4 creation...';
             statusElement.className = 'mp4-status in-progress';
-            
+             createButton.disabled = true; // Disable button while processing
+
             fetch(`/api/jobs/${jobId}/create_mp4`, {
                 method: 'POST',
                 headers: {
@@ -908,74 +1033,141 @@
                 },
                 body: JSON.stringify({ codec, quality })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(errData => {
+                         throw new Error(errData.error || `Request failed: ${response.status}`);
+                     }).catch(() => {
+                          throw new Error(`Request failed: ${response.status}`);
+                     });
+                }
+                 return response.json();
+            })
             .then(data => {
-                if (data.error) {
+                if (data.error) { // Should be caught above
                     statusElement.innerHTML = `Error: ${data.error}`;
                     statusElement.className = 'mp4-status error';
+                     createButton.disabled = false; // Re-enable on error
                 } else {
-                    statusElement.innerHTML = data.message || 'MP4 creation started';
+                    statusElement.innerHTML = data.message || 'MP4 creation process started...';
                     statusElement.className = 'mp4-status in-progress';
-                    
-                    // Start polling for status
-                    pollMP4Status(jobId);
+                    pollMP4Status(jobId); // Start polling
+                     // Button remains disabled until polling finishes
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
-                statusElement.innerHTML = `Error: ${error.message || 'Unknown error'}`;
+                console.error('Create MP4 Error:', error);
+                statusElement.innerHTML = `Error initiating creation: ${error.message}`;
                 statusElement.className = 'mp4-status error';
+                 createButton.disabled = false; // Re-enable on error
             });
         }
-        
-        // Function to open video preview
-        function openVideoPreview(jobId) {
-            window.open(`/api/jobs/${jobId}/preview`, '_blank');
-        }
-        
+
         // Function to poll MP4 creation status
+        let mp4PollIntervals = {}; // Store intervals per job ID
         function pollMP4Status(jobId) {
             const statusElement = document.getElementById(`mp4-status-${jobId}`);
-            let pollInterval = setInterval(() => {
+             const createButton = statusElement?.previousElementSibling; // Get the button again
+
+            // Clear existing interval for this job ID if any
+            if (mp4PollIntervals[jobId]) {
+                clearInterval(mp4PollIntervals[jobId]);
+            }
+
+            const pollStartTime = Date.now();
+            const maxPollDuration = 5 * 60 * 1000; // 5 minutes timeout
+
+            mp4PollIntervals[jobId] = setInterval(() => {
+                 // Timeout check
+                 if (Date.now() - pollStartTime > maxPollDuration) {
+                     clearInterval(mp4PollIntervals[jobId]);
+                     delete mp4PollIntervals[jobId];
+                     if (statusElement) {
+                         statusElement.innerHTML = 'MP4 status check timed out.';
+                         statusElement.className = 'mp4-status warning';
+                     }
+                     if (createButton) createButton.disabled = false; // Re-enable button
+                     return;
+                 }
+
                 fetch(`/api/jobs/${jobId}/mp4_status`)
-                .then(response => response.json())
+                .then(response => {
+                     if (!response.ok) {
+                          return response.json().then(errData => {
+                             throw new Error(errData.error || `Status check failed: ${response.status}`);
+                          }).catch(() => {
+                              throw new Error(`Status check failed: ${response.status}`);
+                          });
+                     }
+                     return response.json();
+                })
                 .then(data => {
+                     if (!statusElement) { // Element might be gone if user navigated away
+                          clearInterval(mp4PollIntervals[jobId]);
+                          delete mp4PollIntervals[jobId];
+                          return;
+                     }
+
+                     let keepPolling = true;
                     if (data.error) {
-                        statusElement.innerHTML = `Error: ${data.error}`;
+                        statusElement.innerHTML = `Error checking status: ${data.error}`;
                         statusElement.className = 'mp4-status error';
-                        clearInterval(pollInterval);
-                    } else if (data.status === 'completed') {
-                        statusElement.innerHTML = `MP4 created successfully: ${data.mp4_path}`;
-                        statusElement.className = 'mp4-status success';
-                        clearInterval(pollInterval);
-                    } else if (data.status === 'failed') {
-                        statusElement.innerHTML = `MP4 creation failed: ${data.error || 'Unknown error'}`;
-                        statusElement.className = 'mp4-status error';
-                        clearInterval(pollInterval);
-                    } else if (data.status === 'in_progress') {
-                        statusElement.innerHTML = 'MP4 creation in progress...';
-                        statusElement.className = 'mp4-status in-progress';
+                        keepPolling = false;
                     } else {
-                        statusElement.innerHTML = `Status: ${data.status}`;
+                         switch(data.status) {
+                             case 'completed':
+                                 statusElement.innerHTML = `MP4 creation complete!`; // Link added via refresh
+                                 statusElement.className = 'mp4-status success';
+                                 keepPolling = false;
+                                 refreshData(); // Refresh to show download link etc.
+                                 break;
+                             case 'failed':
+                                 statusElement.innerHTML = `MP4 creation failed: ${data.error || 'Unknown reason'}`;
+                                 statusElement.className = 'mp4-status error';
+                                 keepPolling = false;
+                                 break;
+                             case 'in_progress':
+                                 statusElement.innerHTML = `MP4 creation in progress... (${data.progress || '?' }%)`;
+                                 statusElement.className = 'mp4-status in-progress';
+                                 break;
+                             case 'pending':
+                                 statusElement.innerHTML = 'MP4 creation pending...';
+                                 statusElement.className = 'mp4-status in-progress'; // Or a specific pending style
+                                 break;
+                             default:
+                                 statusElement.innerHTML = `Status: ${data.status}`;
+                                 // Decide if this status is terminal or requires polling
+                                 // keepPolling = !['unknown', 'other_terminal_state'].includes(data.status);
+                         }
                     }
+
+                     if (!keepPolling) {
+                         clearInterval(mp4PollIntervals[jobId]);
+                         delete mp4PollIntervals[jobId];
+                         if (createButton) createButton.disabled = false; // Re-enable button
+                     }
                 })
                 .catch(error => {
                     console.error('Error polling MP4 status:', error);
-                    statusElement.innerHTML = `Error checking status: ${error.message || 'Unknown error'}`;
-                    statusElement.className = 'mp4-status error';
-                    clearInterval(pollInterval);
+                     if (statusElement) {
+                        statusElement.innerHTML = `Error checking status: ${error.message}`;
+                        statusElement.className = 'mp4-status error';
+                     }
+                     clearInterval(mp4PollIntervals[jobId]);
+                     delete mp4PollIntervals[jobId];
+                     if (createButton) createButton.disabled = false; // Re-enable button
                 });
-            }, 2000); // Poll every 2 seconds
-            
-            // Stop polling after 5 minutes (300 seconds) if not completed
-            setTimeout(() => {
-                if (pollInterval) {
-                    clearInterval(pollInterval);
-                    statusElement.innerHTML = 'MP4 creation status unknown (timeout)';
-                    statusElement.className = 'mp4-status warning';
-                }
-            }, 300000);
+            }, 3000); // Poll every 3 seconds
         }
+
+        // Function to open video preview/download (decides based on endpoint behavior)
+        function openVideoPreview(jobId) {
+            // This endpoint should ideally stream the video or force download
+            window.open(`/api/jobs/${jobId}/mp4`, '_blank');
+            // Alternatively, if /preview shows the video: window.open(`/api/jobs/${jobId}/preview`, '_blank');
+        }
+
     </script>
+
 </body>
 </html>
