@@ -4,11 +4,22 @@ A lightweight distributed rendering system for Blender, featuring a server plugi
 
 ## Overview
 
-This project provides a simple yet effective way to distribute Blender rendering tasks across multiple machines. It consists of:
+This project provides a simple yet effective way to distribute Blender rendering tasks across multiple machines.
 
-1. **Server Plugin (`blender-render-farm-plugin.py`)**: A Blender addon that turns a Blender instance into a render server
-2. **Standalone Server (`standalone_server.py`)**: A Python-based server with web interface that doesn't require Blender
-3. **Client Script (`blender-client-script.py`)**: A Python script that connects to the server and renders assigned frames
+### Blender Plugin 
+
+You can use the Blender Plugin to run a server and Client Script:
+
+- **Server Plugin (`blender-render-farm-plugin.py`)**: A Blender addon that turns a Blender instance into a render server
+- **Client Script (`blender-client-script.py`)**: A Python script that connects to the server and renders assigned frames
+
+### Python Server
+
+Using a Stand Alone python server (with web interface) and run the client again
+
+- **Standalone Server (`standalone_server.py`)**: A Python-based server with web interface that doesn't require Blender 
+- **Client Script (`blender-client-script.py`)**: A Python script that connects to the server and renders assigned frames
+
 
 The system is designed to be:
 - Easy to set up and use
