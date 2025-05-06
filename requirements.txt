@@ -1,0 +1,36 @@
+# MicroFarm Blender Render Farm dependencies
+
+# Flask and web server dependencies (for standalone server)
+Flask==2.3.3
+Werkzeug==2.3.7
+flask-cors==4.0.0
+Jinja2==3.1.2
+MarkupSafe==2.1.3
+itsdangerous==2.1.2
+python-dotenv==1.0.0
+
+# File handling and security
+python-magic==0.4.27
+Pillow==10.0.0
+Werkzeug==2.3.7
+
+# Utilities
+requests==2.31.0
+urllib3==2.0.4
+certifi==2023.7.22
+chardet==5.2.0
+idna==3.4
+
+# Optional: for ffmpeg operations
+# Note: FFmpeg must also be installed on the system
+python-ffmpeg==2.0.4
+
+# Blender dependencies - these are typically included with Blender's Python distribution
+# bpy  # Blender Python API - no pip package, comes with Blender
+
+# Network and concurrency
+# These are part of Python's standard library, so no pip packages needed:
+# socket, threading, json, queue
+
+# Logging and error handling
+colorlog==6.7.0

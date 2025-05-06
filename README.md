@@ -12,8 +12,8 @@ You can choose one of this options:
 
 You can use the Blender Plugin to run a server and Client Script:
 
-- **Server Plugin (`blender-render-farm-plugin.py`)**: A Blender addon that turns a Blender instance into a render server
-- **Client Script (`blender-client-script.py`)**: A Python script that connects to the server and renders assigned frames
+- **Server Plugin (`blender-server-farm-plugin.py`)**: A Blender addon that turns a Blender instance into a render server
+- **Client Plugin (`blender-client-plugin.py`)**: A Blender addon to connects to the server and renders assigned frames
 
 ![Blender Server Pluging](assets/Blender_UI.jpg)
 
@@ -21,8 +21,8 @@ You can use the Blender Plugin to run a server and Client Script:
 
 Using a Stand Alone python server (with web interface) and run the client again
 
-- **Standalone Server (`standalone_server.py`)**: A Python-based server with web interface that doesn't require Blender 
-- **Client Script (`blender-client-script.py`)**: A Python script that connects to the server and renders assigned frames
+- **Standalone Server (`server-script.py`)**: A Python-based server with web interface that doesn't require Blender 
+- **Client Script (`client-script.py`)**: A Python script that connects to the server and renders assigned frames
 
 ![Python Server](assets/web_UI.jpg)
 
@@ -48,36 +48,45 @@ The system is designed to be:
 
 ## Installation
 
-### Blender Server Setup
+### As Blender ADD-ON
+
+#### Blender Server Setup
 
 1. Open Blender (4.0+)
 2. Go to Edit > Preferences > Add-ons > Install
-3. Select the `blender-render-farm-plugin.py` file and click 'Install Add-on'
-4. Enable the add-on by checking the box next to "Render: Minimal Render Server (In-Memory)"
+3. Select the `blender-server-farm-plugin.py` file and click 'Install Add-on'
+4. Enable the add-on by checking the box next to "MicroFarm Server"
 5. Configure the addon settings:
    - Set the server port (default: 9090)
    - Set the output directory for rendered frames
 
-### Standalone Server Setup
+#### Blender Client Setup
 
-The standalone server requires Python 3.7+ with the following packages:
-- Flask
-- Werkzeug
-- FFmpeg (for MP4 creation)
+1. Open Blender (4.0+)
+2. Go to Edit > Preferences > Add-ons > Install
+3. Select the `blender-client-plugin.py` file and click 'Install Add-on'
+4. Enable the add-on by checking the box next to "MicroFarm Client"
+5. Configure the addon settings:
+   - Set the server port (default: 9090)
+   - Set the output directory for rendered frames
+
+### As Python Script
+
+### Standalone Server Setup
 
 #### Installation:
 
 1. Install Python 3.7+ if not already installed
 2. Install required packages:
    ```bash
-   pip install flask werkzeug
+   pip install -r requirements.txt
    ```
-3. Install FFmpeg for your platform if not already installed
+3. Install [FFmpeg](https://www.ffmpeg.org/download.html) for your platform if not already installed
 
 #### Running the Server:
 
 ```bash
-python standalone_server.py --port 9090 --web-port 8080 --output-dir /path/to/output
+python server-script.py --port 9090 --web-port 8080 --output-dir /path/to/output
 ```
 
 Options:
@@ -92,7 +101,7 @@ The client requires Blender and Python 3.7+ to run.
 #### Basic Client Usage:
 
 ```bash
-blender --background --python blender-client-script.py -- --server SERVER_IP --port 9090 --name CLIENT_NAME
+blender --background --python client-script.py -- --server SERVER_IP --port 9090 --name CLIENT_NAME
 ```
 
 #### Windows Example:
@@ -104,13 +113,13 @@ blender --background --python blender-client-script.py -- --server SERVER_IP --p
 #### macOS Example:
 
 ```bash
-/Applications/Blender.app/Contents/MacOS/Blender --background --python blender-client-script.py -- --server 192.168.1.100 --port 9090 --name MacClient1
+/Applications/Blender.app/Contents/MacOS/Blender --background --python client-script.py -- --server 192.168.1.100 --port 9090 --name MacClient1
 ```
 
 #### Linux Example:
 
 ```bash
-blender --background --python blender-client-script.py -- --server 192.168.1.100 --port 9090 --name LinuxClient1
+blender --background --python client-script.py -- --server 192.168.1.100 --port 9090 --name LinuxClient1
 ```
 
 ## Usage
