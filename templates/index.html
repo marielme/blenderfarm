@@ -5,29 +5,76 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MicroFarm: Blender Renderfarm Server</title>
     <style>
+        :root {
+            /* Light mode (default) variables */
+            --bg-color: #f5f5f5;
+            --container-bg: white;
+            --text-color: #333;
+            --border-color: #ddd;
+            --shadow-color: rgba(0,0,0,0.1);
+            --card-bg: #fff;
+            --section-bg: white;
+            --input-bg: white;
+            --input-color: #333;
+            --input-border: #ddd;
+        }
+
+        /* Dark mode variables */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #1a1a1a;
+                --container-bg: #242424;
+                --text-color: #e0e0e0;
+                --border-color: #444;
+                --shadow-color: rgba(0,0,0,0.3);
+                --card-bg: #2d2d2d;
+                --section-bg: #2d2d2d;
+                --input-bg: #2d2d2d;
+                --input-color: #e0e0e0;
+                --input-border: #555;
+            }
+        }
+
+        /* Dark mode class for manual toggle */
+        html.dark-mode {
+            --bg-color: #1a1a1a;
+            --container-bg: #242424;
+            --text-color: #e0e0e0;
+            --border-color: #444;
+            --shadow-color: rgba(0,0,0,0.3);
+            --card-bg: #2d2d2d;
+            --section-bg: #2d2d2d;
+            --input-bg: #2d2d2d;
+            --input-color: #e0e0e0;
+            --input-border: #555;
+        }
+
         body {
             font-family: Arial, sans-serif;
             line-height: 1.6;
             margin: 0;
             padding: 20px;
-            background-color: #f5f5f5;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
         }
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            background-color: white;
+            background-color: var(--container-bg);
             padding: 20px;
             border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            box-shadow: 0 0 10px var(--shadow-color);
         }
         h1, h2, h3 {
-            color: #333;
+            color: var(--text-color);
         }
         .section {
             margin-bottom: 30px;
             padding: 15px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border-color);
             border-radius: 5px;
+            background-color: var(--section-bg);
         }
         .job-grid, .client-grid {
             display: grid;
@@ -36,20 +83,20 @@
             margin-top: 15px;
         }
         .job-card, .client-card {
-            border: 1px solid #ddd;
+            border: 1px solid var(--border-color);
             border-radius: 5px;
             padding: 15px;
-            background-color: #fff;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            background-color: var(--card-bg);
+            box-shadow: 0 2px 4px var(--shadow-color);
         }
         .job-card h4, .client-card h4 {
             margin-top: 0;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border-color);
             padding-bottom: 5px;
         }
         .progress-bar {
             width: 100%;
-            background-color: #e0e0e0;
+            background-color: var(--border-color);
             border-radius: 3px;
             height: 10px;
             margin: 10px 0;
@@ -95,9 +142,11 @@
         input, select {
             width: 100%;
             padding: 8px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--input-border);
             border-radius: 4px;
             box-sizing: border-box;
+            background-color: var(--input-bg);
+            color: var(--input-color);
         }
         .form-check {
             display: flex;
@@ -311,11 +360,85 @@
             border-bottom: 10px solid transparent;
             border-left: 15px solid white;
         }
+        
+        /* Dark mode toggle button */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: var(--container-bg);
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            border-radius: 20px;
+            color: var(--text-color);
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 5px var(--shadow-color);
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+        
+        .theme-toggle:hover {
+            transform: translateY(-2px);
+        }
+        
+        .theme-toggle .icon {
+            width: 16px;
+            height: 16px;
+            display: inline-block;
+        }
+        
+        /* Sun icon for dark mode toggle */
+        .light-icon {
+            background: radial-gradient(circle, transparent 50%, #f1c40f 50%);
+            position: relative;
+        }
+        
+        .light-icon::after {
+            content: '';
+            position: absolute;
+            top: -4px;
+            left: 7px;
+            width: 2px;
+            height: 24px;
+            background: #f1c40f;
+            box-shadow: 0 0 0 0 #f1c40f;
+            transform-origin: center;
+        }
+        
+        .light-icon::before {
+            content: '';
+            position: absolute;
+            top: 7px;
+            left: -4px;
+            width: 24px;
+            height: 2px;
+            background: #f1c40f;
+            box-shadow: 0 0 0 0 #f1c40f;
+            transform-origin: center;
+        }
+        
+        /* Moon icon for light mode toggle */
+        .dark-icon {
+            border-radius: 50%;
+            box-shadow: inset -3px 2px 0 0 #ddd;
+            transform: rotate(-35deg);
+            background: transparent;
+            border: none;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>MicroFarm: Blender Render Farm Server</h1>
+        
+        <button id="themeToggle" class="theme-toggle">
+            <span class="icon dark-icon"></span>
+            <span>Toggle Theme</span>
+        </button>
         
         <button id="refreshButton" class="refresh-button">Refresh Data</button>
         
@@ -394,6 +517,9 @@
             refreshData();
             setInterval(refreshData, 5000);
             
+            // Initialize theme based on stored preference or system preference
+            initializeTheme();
+            
             // Add event listener for manual refresh
             document.getElementById('refreshButton').addEventListener('click', refreshData);
             
@@ -402,6 +528,9 @@
                 e.preventDefault();
                 uploadBlendFile();
             });
+            
+            // Add event listener for theme toggle
+            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
             
             // Add event listener for completed jobs toggle
             document.getElementById('toggleCompletedJobs').addEventListener('click', function() {
@@ -415,6 +544,62 @@
                 }
             });
         });
+        
+        // Function to initialize theme
+        function initializeTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            const systemDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const themeToggle = document.getElementById('themeToggle');
+            
+            // If user has a saved preference, use that
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark-mode');
+                updateThemeToggle(true);
+            } else if (savedTheme === 'light') {
+                document.documentElement.classList.remove('dark-mode');
+                updateThemeToggle(false);
+            } else if (systemDarkMode) {
+                // Otherwise, use system preference
+                document.documentElement.classList.add('dark-mode');
+                updateThemeToggle(true);
+            }
+            
+            // Listen for system theme changes
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+                // Only apply system changes if user hasn't set a preference
+                if (!localStorage.getItem('theme')) {
+                    if (e.matches) {
+                        document.documentElement.classList.add('dark-mode');
+                        updateThemeToggle(true);
+                    } else {
+                        document.documentElement.classList.remove('dark-mode');
+                        updateThemeToggle(false);
+                    }
+                }
+            });
+        }
+        
+        // Function to toggle theme
+        function toggleTheme() {
+            const isDarkMode = document.documentElement.classList.toggle('dark-mode');
+            updateThemeToggle(isDarkMode);
+            localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+        }
+        
+        // Function to update theme toggle button
+        function updateThemeToggle(isDarkMode) {
+            const themeToggle = document.getElementById('themeToggle');
+            const iconSpan = themeToggle.querySelector('.icon');
+            const textSpan = themeToggle.querySelector('span:not(.icon)');
+            
+            if (isDarkMode) {
+                iconSpan.className = 'icon light-icon';
+                textSpan.textContent = 'Light Mode';
+            } else {
+                iconSpan.className = 'icon dark-icon';
+                textSpan.textContent = 'Dark Mode';
+            }
+        }
         
         // Function to refresh data
         function refreshData() {
