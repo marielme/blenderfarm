@@ -1,10 +1,10 @@
 """
-MicroFarm: Blender Render Farm Client Plugin
+MicroFarm: Blender Render Farm Client add-on
 ============================================
-A plugin version of the command-line client script for MicroFarm render farm.
+A add-on version of the command-line client script for MicroFarm render farm.
 Connects to the MicroFarm server and processes render tasks within Blender.
 
-Author: Claude / AI Assistant
+Author: Mariel Martinez + AI tools
 License: GPL v3
 """
 

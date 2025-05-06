@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 """
-Standalone Blender Render Farm Server
+MicroFarm: Python Blender Render Farm Server
 =====================================
 
 This standalone server provides a web interface for the Blender Render Farm system.
 It allows uploading blend files and managing render jobs without running Blender.
 
 Key features:
-- Uses the same socket server logic as the Blender plugin
+- Uses the same socket server logic as the Blender Add-on
 - Provides a web interface for job management
 - Supports job queuing and management
 - Compatible with existing render farm clients
 
 Usage:
-    python standalone_server.py [--port PORT] [--web-port WEB_PORT] [--output-dir OUTPUT_DIR]
+    python microfarm_server.py [--port PORT] [--web-port WEB_PORT] [--output-dir OUTPUT_DIR]
 
-Author: Claude
-License: APACHE 2.0
+Author: Mariel Martinez + AI tools
+License: Apache 2.0
 """
 
 import os
@@ -47,7 +47,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[logging.StreamHandler(sys.stdout)]
 )
-logger = logging.getLogger("BlenderFarmServer")
+logger = logging.getLogger("MicroFarm")
 
 # --- Global Variables ---
 CLIENTS: Dict[str, 'RenderClient'] = {}
@@ -815,16 +815,16 @@ def server_loop(server_socket: socket.socket):
     next_client_count_check = time.monotonic() + 30.0  # Log client count every 30 seconds
     timeout_delta = timedelta(seconds=CLIENT_TIMEOUT_SECONDS)
     
-    # Create a test client for debugging
-    with CLIENT_LOCK:
-        test_client_id = "test-localhost"
-        CLIENTS[test_client_id] = RenderClient(
-            client_id=test_client_id,
-            ip="127.0.0.1",
-            name="TestClient",
-            status="idle"
-        )
-        logger.info(f"Added test client: {test_client_id}")
+    # # Create a test client for debugging
+    # with CLIENT_LOCK:
+    #     test_client_id = "test-localhost"
+    #     CLIENTS[test_client_id] = RenderClient(
+    #         client_id=test_client_id,
+    #         ip="127.0.0.1",
+    #         name="TestClient",
+    #         status="idle"
+    #     )
+    #     logger.info(f"Added test client: {test_client_id}")
     
     running = True
     while running:
@@ -1875,9 +1875,6 @@ def main():
     
     # Load previous jobs from JSON files
     load_previous_jobs()
-    
-    # Create basic HTML template for the web interface
-    # create_templates()
     
     # Start the server socket
     server_socket = start_server_socket(SERVER_PORT)

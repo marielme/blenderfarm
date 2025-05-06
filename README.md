@@ -1,6 +1,6 @@
 # MicroFarm: Blender Render Farm
 
-A lightweight distributed rendering system for Blender, featuring a server plugin and client script to distribute rendering tasks across multiple computers.
+A lightweight distributed rendering system for Blender, featuring a server add-on and client script to distribute rendering tasks across multiple computers.
 
 ## Overview
 
@@ -8,21 +8,21 @@ This project provides a simple yet effective way to distribute Blender rendering
 
 You can choose one of this options:
 
-### Blender Plugin 
+### Blender Add-on 
 
-You can use the Blender Plugin to run a server and Client Script:
+You can use the Blender add-on to run a server and Client Script:
 
-- **Server Plugin (`blender-server-farm-plugin.py`)**: A Blender addon that turns a Blender instance into a render server
-- **Client Plugin (`blender-client-plugin.py`)**: A Blender addon to connects to the server and renders assigned frames
+- **Server Add-on (`blender_add-on_microfarm_server.py`)**: A Blender addon that turns a Blender instance into a render server
+- **Client Add-on (`blender_add-on_microfarm_client.py`)**: A Blender addon to connects to the server and renders assigned frames
 
-![Blender Server Pluging](assets/Blender_UI.jpg)
+![Blender Server Add-on](assets/Blender_UI.jpg)
 
 ### (or) Python Server
 
 Using a Stand Alone python server (with web interface) and run the client again
 
-- **Standalone Server (`server-script.py`)**: A Python-based server with web interface that doesn't require Blender 
-- **Client Script (`client-script.py`)**: A Python script that connects to the server and renders assigned frames
+- **Server (`microfarm_server.py`)**: A Python-based server with web interface that doesn't require Blender 
+- **Client (`microfarm_client.py`)**: A Python script that connects to the server and renders assigned frames
 
 ![Python Server](assets/web_UI.jpg)
 
@@ -54,7 +54,7 @@ The system is designed to be:
 
 1. Open Blender (4.0+)
 2. Go to Edit > Preferences > Add-ons > Install
-3. Select the `blender-server-farm-plugin.py` file and click 'Install Add-on'
+3. Select the `blender-server-farm-add-on.py` file and click 'Install Add-on'
 4. Enable the add-on by checking the box next to "MicroFarm Server"
 5. Configure the addon settings:
    - Set the server port (default: 9090)
@@ -64,7 +64,7 @@ The system is designed to be:
 
 1. Open Blender (4.0+)
 2. Go to Edit > Preferences > Add-ons > Install
-3. Select the `blender-client-plugin.py` file and click 'Install Add-on'
+3. Select the `blender-client-add-on.py` file and click 'Install Add-on'
 4. Enable the add-on by checking the box next to "MicroFarm Client"
 5. Configure the addon settings:
    - Set the server port (default: 9090)
@@ -86,7 +86,7 @@ The system is designed to be:
 #### Running the Server:
 
 ```bash
-python server-script.py --port 9090 --web-port 8080 --output-dir /path/to/output
+python microfarm_server.py --port 9090 --web-port 8080 --output-dir /path/to/output
 ```
 
 Options:
@@ -101,25 +101,25 @@ The client requires Blender and Python 3.7+ to run.
 #### Basic Client Usage:
 
 ```bash
-blender --background --python client-script.py -- --server SERVER_IP --port 9090 --name CLIENT_NAME
+blender --background --python microfarm_client.py -- --server SERVER_IP --port 9090 --name CLIENT_NAME
 ```
 
 #### Windows Example:
 
 ```batch
-"C:\Program Files\Blender Foundation\Blender 4.0\blender.exe" --background --python blender-client-script.py -- --server 192.168.1.100 --port 9090 --name WindowsClient1
+"C:\Program Files\Blender Foundation\Blender 4.0\blender.exe" --background --python microfarm_client.py -- --server 192.168.1.100 --port 9090 --name WindowsClient1
 ```
 
 #### macOS Example:
 
 ```bash
-/Applications/Blender.app/Contents/MacOS/Blender --background --python client-script.py -- --server 192.168.1.100 --port 9090 --name MacClient1
+/Applications/Blender.app/Contents/MacOS/Blender --background --python microfarm_client.py -- --server 192.168.1.100 --port 9090 --name MacClient1
 ```
 
 #### Linux Example:
 
 ```bash
-blender --background --python client-script.py -- --server 192.168.1.100 --port 9090 --name LinuxClient1
+blender --background --python microfarm_client.py -- --server 192.168.1.100 --port 9090 --name LinuxClient1
 ```
 
 ## Usage

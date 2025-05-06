@@ -1,6 +1,6 @@
 
 """
-Minimal Blender Render Server (Simplified - In-Memory Blend Data)
+MicroFarm: Blender Add-On server
 =================================================================
 CLEANED AND VERIFIED FOR BLENDER 4.X COMPATIBILITY
 A simplified server component for Blender that distributes rendering tasks.
@@ -11,19 +11,19 @@ Key Feature: When a job is created, the current scene is saved temporarily,
 read into memory, and the temporary file is deleted. The in-memory data
 is sent to clients.
 
-Author: Claude (Modified by AI Assistant, Refactored)
+Author: Mariel Martinez + AI tools
 License: Apache 2.0
 """
 
 bl_info = {
-    "name": "MicroFarm: Render Farm Server v1.3", # Version bump for refactor
-    "author": "Mariel Martinex, Using AI tools",
+    "name": "MicroFarm: Render Farm Server", # Version bump for refactor
+    "author": "Mariel Martinez, Using AI tools",
     "version": (1, 3, 0),
     # --- Updated for Blender 4.x ---
     "blender": (4, 0, 0),
     # ---
     "location": "Render Properties > Render Server",
-    "description": "Minimal Render Farm",
+    "description": "MicroFarm: Minimal Render Farm",
     "warning": "Job creation reads the entire blend file into memory and can freeze Blender temporarily. Requires client script.",
     "doc_url": "",
     "category": "Render",

@@ -1,16 +1,14 @@
-# --- START OF FILE blender-client-script.py ---
-
 #!/usr/bin/env python3
 """
-Blender Render Farm Client (for Minimal Server)
+MicroFarm: Client python script
 ===============================================
 Connects to the minimal Blender render farm server script and processes tasks.
 
 Usage:
-  blender --background --python blender-client-script.py -- --server SERVER_IP [--port SERVER_PORT] [--name CLIENT_NAME]
+  blender --background --python microfarm_client.py -- --server SERVER_IP [--port SERVER_PORT] [--name CLIENT_NAME]
 
-Author: Claude (Adjusted by AI Assistant)
-License: GPL v3
+Author: Mariel Martinez + AI tools
+License: Apache 2.0
 """
 
 import argparse
