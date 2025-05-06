@@ -1,6 +1,6 @@
 # MicroFarm: Blender Render Farm
 
-A lightweight distributed rendering system for Blender, featuring a server add-on and client script to distribute rendering tasks across multiple computers.
+A lightweight distributed rendering system for Blender, featuring a server/client in add-on or standalone version to distribute rendering tasks across multiple computers.
 
 ## Overview
 
@@ -35,10 +35,9 @@ The system is designed to be:
 
 ## Features
 
-- **Blend File Handling**: Efficient transfer of blend data
+- **Blend File Handling**: Automatic transfer of blend data
 - **Automatic Frame Distribution**: Distributes frames evenly across clients
 - **Job Management**: Create, monitor, cancel, and complete jobs
-- **Client Auto-Discovery**: Clients automatically connect to the server
 - **Fault Tolerance**: Automatically reassigns frames from disconnected clients
 - **MP4 Creation**: Automatically creates videos from rendered frames
 - **Flexible Output Organization**: Configurable directory structure for frames and videos
