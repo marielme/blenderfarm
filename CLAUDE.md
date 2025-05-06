@@ -18,8 +18,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Threading**: Use RLock for shared resources, mark critical sections with comments
 
 ## Project Structure
-- blender-server-farm-plugin.py: Blender add-on for server functionality
-- blender-client-plugin.py: Blender add-on for client functionality
-- client-script.py: Client script for worker nodes
-- server-script.py: Standalone server script with web interface
+- blender_add-on_microfarm_server.py: Blender add-on for server functionality
+- blender_add-on_microfarm_client.py: Blender add-on for client functionality
+- microfarm_client.py: Client script for worker nodes
+- microfarm_server.py: Standalone server script with web interface
 - demo.blend: Example Blender file for testing
