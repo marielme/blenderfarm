@@ -128,7 +128,7 @@ blender --background --python client-script.py -- --server 192.168.1.100 --port 
 
 1. Open Blender on the computer that will act as the render server
 2. Go to the "Render Properties" tab
-3. Find the "Render Server (In-Memory)" panel
+3. Find the "MicroFram: Server" panel
 4. Click "Start Server" to begin listening for clients
 5. Configure job settings:
    - Set "Frames Per Chunk" (how many frames to assign to a client at once)
@@ -215,9 +215,9 @@ Client-side files use this structure:
 
 ## Requirements
 
-- **Blender Server**: Blender 4.0 or higher
+- **Blender Server And Client Addon**: Blender 4.0 or higher
 - **Standalone Server**: Python 3.7+, Flask, Werkzeug
-- **Client**: Blender 4.0 or higher + Python 3.7+
+- **Python Server and Client**: Blender 4.0 or higher + Python 3.7+
 - **Network**: Clients must be able to connect to the server's IP address and port
 - **MP4 Creation**: FFmpeg installed on the server machine (for video creation)
 - **Web Interface**: Modern web browser (Chrome, Firefox, Safari, Edge)
