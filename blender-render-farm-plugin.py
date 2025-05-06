@@ -121,6 +121,21 @@ class RenderServerProperties(bpy.types.PropertyGroup):
         description="Create an MP4 video from rendered frames when the job completes",
         default=True,
     )
+    
+    def get_camera_items(self, context):
+        cameras = []
+        for obj in context.scene.objects:
+            if obj.type == 'CAMERA':
+                cameras.append((obj.name, obj.name, f"Use camera '{obj.name}' for rendering"))
+        if not cameras:
+            cameras.append(("Camera", "Camera", "Default camera"))
+        return cameras
+        
+    camera: bpy.props.EnumProperty(
+        name="Render Camera",
+        description="Camera to use for rendering",
+        items=get_camera_items,
+    )
     video_location: bpy.props.EnumProperty(
         name="MP4 Location",
         description="Where to save the MP4 video file",
@@ -1658,6 +1673,12 @@ class RENDERSERVER_OT_send_scene(bpy.types.Operator):
 
                 with CLIENT_LOCK:
                     # Create job data structure
+                    # Get selected camera
+                    props = getattr(context.scene, "render_server", None)
+                    camera = "Camera"  # Default camera name
+                    if props and hasattr(props, "camera") and props.camera:
+                        camera = props.camera
+
                     job_data = {
                         "id": self._job_id,
                         "all_frames": list(self.all_frames), # Use copy
@@ -1667,6 +1688,7 @@ class RENDERSERVER_OT_send_scene(bpy.types.Operator):
                         "blend_data": self.blend_data, # Store the actual bytes
                         "blend_filename": self.blend_filename, # Store filename for client info
                         "output_format": self.output_format_str,
+                        "camera": camera,  # Selected camera name
                         "start_time": datetime.now(),
                         "end_time": None, # Will be set on completion
                         "status": "active", # Mark as active immediately
@@ -2194,6 +2216,7 @@ class RENDERSERVER_PT_main_panel(bpy.types.Panel):
                 col.label(text="Next Job Configuration:")
                 col.prop(props, "frame_chunks")
                 col.prop(props, "pack_textures")
+                col.prop(props, "camera")
                 
                 # Video creation options
                 video_col = col.column()

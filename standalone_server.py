@@ -484,6 +484,7 @@ def handle_client(client_socket: socket.socket, client_address: Tuple[str, int])
                                 'blend_file_name': blend_filename,
                                 'output_format': output_format,
                                 'file_size': file_size,
+                                'camera': job.get('camera', 'Camera'),  # Include camera information
                             }
                             client_socket.sendall(json.dumps(response).encode('utf-8'))
                             
@@ -873,7 +874,7 @@ def server_loop(server_socket: socket.socket):
 
 def create_job(blend_file_path: str, frame_start: int, frame_end: int, frame_step: int = 1,
                project_name: str = None, frame_chunk_size: int = 3,
-               queue_immediately: bool = True) -> Tuple[str, Dict[str, Any]]:
+               queue_immediately: bool = True, camera: str = "Camera") -> Tuple[str, Dict[str, Any]]:
     """
     Creates a new render job from a blend file.
     
@@ -923,6 +924,7 @@ def create_job(blend_file_path: str, frame_start: int, frame_end: int, frame_ste
         "blend_data": blend_data,
         "blend_filename": os.path.basename(blend_file_path),
         "output_format": "PNG",  # Default format
+        "camera": camera,  # Camera to use for rendering
         "start_time": datetime.now(),
         "end_time": None,
         "status": "queued" if not queue_immediately else "active",
@@ -1303,6 +1305,7 @@ def api_upload():
     frame_chunk_size = int(request.form.get('frame_chunk_size', 3))
     project_name = request.form.get('project_name', os.path.splitext(blend_file.filename)[0])
     queue_immediately = request.form.get('queue_immediately', 'false').lower() == 'true'
+    camera = request.form.get('camera', 'Camera')  # Get camera name with default "Camera"
     
     # Save the uploaded file temporarily
     filename = secure_filename(blend_file.filename)
@@ -1318,7 +1321,8 @@ def api_upload():
             frame_step,
             project_name,
             frame_chunk_size,
-            queue_immediately
+            queue_immediately,
+            camera
         )
         
         if not job_id:

@@ -368,6 +368,7 @@ class RenderFarmClient:
                 "blend_file_name": response_data.get("blend_file_name"),
                 "output_format": response_data.get("output_format"),  # Informational
                 "file_size": response_data.get("file_size", 0),
+                "camera": response_data.get("camera", "Camera"),  # Camera to use for rendering, default to "Camera"
             }
 
             # Validate essential data
@@ -615,6 +616,9 @@ class RenderFarmClient:
                 safe_blend_path = blend_path.replace('\\', '/')
                 safe_output_path = render_output_path_pattern.replace('\\', '/')
                 
+                # Get the camera from job data
+                camera = job.get("camera", "Camera")
+                
                 with open(temp_script_path, "w") as f:
                     f.write(f"""
 import bpy
@@ -626,6 +630,18 @@ bpy.ops.wm.open_mainfile(filepath="{safe_blend_path}")
 
 # Set the output path
 bpy.context.scene.render.filepath = "{safe_output_path}"
+
+# Set the active camera
+camera_name = "{camera}"
+if camera_name in bpy.data.objects:
+    camera_obj = bpy.data.objects[camera_name]
+    if camera_obj.type == 'CAMERA':
+        bpy.context.scene.camera = camera_obj
+        print(f"Using camera: {{camera_name}}")
+    else:
+        print(f"Object '{{camera_name}}' exists but is not a camera. Using default camera.")
+else:
+    print(f"Warning: Camera '{{camera_name}}' not found. Using default camera.")
 
 # Render the frame
 bpy.context.scene.frame_set({frame})
