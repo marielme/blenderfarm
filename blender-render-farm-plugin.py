@@ -2065,7 +2065,7 @@ class RENDERSERVER_OT_force_job_complete(bpy.types.Operator):
             return {"CANCELLED"}
 
 class RENDERSERVER_PT_main_panel(bpy.types.Panel):
-    bl_label = "Render Server (In-Memory)"
+    bl_label = "MicroFarm Server"
     bl_idname = "RENDERSERVER_PT_main_panel_minimal_memory"
     bl_space_type = "PROPERTIES"
     bl_region_type = "WINDOW"
