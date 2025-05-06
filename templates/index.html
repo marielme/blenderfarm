@@ -132,7 +132,7 @@
         .job-controls {
             display: flex;
             gap: 5px;
-            margin-top: 10px;
+            margin-top: 15px;
         }
         button {
             padding: 5px 10px;
@@ -299,16 +299,19 @@
             vertical-align: middle;
         }
         .job-preview {
-            margin-top: 10px;
+            margin-top: 15px;
+            margin-bottom: 5px;
             text-align: center;
+            position: relative;
         }
         .job-preview img, .job-preview video {
             max-width: 100%;
-            max-height: 150px;
+            max-height: 180px;
             border: 1px solid var(--border-color); /* Use variable */
             border-radius: 3px;
             cursor: pointer;
             background-color: #000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }
         .delete-job {
             background-color: #f44336;
@@ -339,7 +342,7 @@
         .video-preview {
             border: 2px solid #673ab7 !important;  /* Purple border for video previews */
         }
-        .video-badge {
+        .video-badge, .preview-badge {
             position: absolute;
             top: 5px;
             right: 5px;
@@ -349,6 +352,9 @@
             border-radius: 3px;
             font-size: 0.7em;
             font-weight: bold;
+        }
+        .preview-badge {
+            background-color: #2196f3; /* Blue for preview badge */
         }
         .video-container {
             position: relative;
@@ -709,6 +715,14 @@
                      if (completedGrid.style.display !== 'none' || !completedGrid.innerHTML.includes('job-card')) {
                          updateJobs(data.completed_jobs, 'completedJobsGrid');
                      }
+
+                     // Update all active job previews with cache-busting timestamps
+                     document.querySelectorAll('#activeJobsGrid .job-preview img').forEach(img => {
+                         if (img.src.includes('/latest_frame')) {
+                             const src = img.src.split('?')[0];
+                             img.src = `${src}?t=${new Date().getTime()}`;
+                         }
+                     });
                 })
                 .catch(error => {
                      console.error('Error fetching data:', error);
@@ -777,6 +791,9 @@
                 // Preview, links, and controls for completed/cancelled jobs
                 let jobExtras = '';
                 if (job.status === 'completed' || job.status === 'cancelled') {
+                     // Skip adding the normal preview for active jobs that already have a preview
+                     const hasActivePreview = job.status === 'active' && job.completed_frames > 0;
+                     
                      let mp4Controls = `
                         <div class="mp4-controls">
                             <h5>Create MP4 Video</h5>
@@ -853,6 +870,15 @@
                         </div>
                         <p><strong>Started:</strong> ${startTime}</p>
                         ${endTime ? `<p><strong>Ended:</strong> ${endTime}</p>` : ''}
+                        
+                        ${(job.status === 'active' || displayStatus === 'pending') && job.completed_frames > 0 ? `
+                        <div class="job-preview">
+                            <a href="/api/jobs/${job.id}/latest_frame" target="_blank">
+                                <img src="/api/jobs/${job.id}/latest_frame?t=${new Date().getTime()}" alt="Latest Frame" title="Latest Rendered Frame (${job.completed_frames}) - Click to enlarge" onerror="this.style.display='none'"/>
+                            </a>
+                            <div class="preview-badge">Frame ${job.completed_frames}</div>
+                        </div>
+                        ` : ''}
 
                         <div class="job-controls">
                             ${(job.status === 'active' || displayStatus === 'pending') ? `

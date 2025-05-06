@@ -1575,18 +1575,25 @@ def api_job_thumbnail(job_id):
     # Check if directory exists
     if not os.path.exists(job_dir):
         return jsonify({"error": f"Job directory not found for {job_id}"}), 404
-        
+    
     # Look for PNG files
     frame_files = sorted(glob.glob(os.path.join(job_dir, "frame_*.png")))
     
     if not frame_files:
         return jsonify({"error": "No frame files found"}), 404
     
-    # Get the first frame
-    first_frame = frame_files[0]
+    # Get the appropriate frame
+    with CLIENT_LOCK:
+        job = ACTIVE_JOBS.get(job_id)
+        if job and job.get("status") == "active":
+            # For active jobs, use the latest frame
+            frame_to_serve = frame_files[-1]  # Last frame in the sorted list is the latest
+        else:
+            # For completed jobs, use the first frame
+            frame_to_serve = frame_files[0]
     
     # Serve the file
-    return send_from_directory(os.path.dirname(first_frame), os.path.basename(first_frame))
+    return send_from_directory(os.path.dirname(frame_to_serve), os.path.basename(frame_to_serve))
 
 
 @app.route('/api/jobs/<job_id>/files', methods=['GET'])
@@ -1663,6 +1670,28 @@ def api_job_file_download(job_id, filename):
         return jsonify({"error": f"Job directory not found for {job_id}"}), 404
     
     return send_from_directory(job_dir, filename)
+
+
+@app.route('/api/jobs/<job_id>/latest_frame', methods=['GET'])
+def api_job_latest_frame(job_id):
+    """Returns the latest rendered frame for an active job."""
+    job_dir = os.path.join(OUTPUT_DIR, job_id)
+    
+    # Check if directory exists
+    if not os.path.exists(job_dir):
+        return jsonify({"error": f"Job directory not found for {job_id}"}), 404
+    
+    # Look for PNG files
+    frame_files = sorted(glob.glob(os.path.join(job_dir, "frame_*.png")))
+    
+    if not frame_files:
+        return jsonify({"error": "No frame files found"}), 404
+    
+    # Get the latest frame (last in sorted list)
+    latest_frame = frame_files[-1]
+    
+    # Serve the file
+    return send_from_directory(os.path.dirname(latest_frame), os.path.basename(latest_frame))
 
 
 @app.route('/api/jobs/<job_id>/mp4', methods=['GET'])
