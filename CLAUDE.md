@@ -3,8 +3,8 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Build/Run Commands
-- Run blender server: `blender --python blender-server-farm-plugin.py`
-- Run client: `blender --background --python client-script.py -- --server SERVER_IP --port 9090 --name CLIENT_NAME`
+- Run blender server: `blender --python blender_add-on_microfarm_server.py:`
+- Run client: `blender --background --python microfarm_client.py -- --server SERVER_IP --port 9090 --name CLIENT_NAME`
 - Test with demo file: `blender demo.blend`
 
 ## Code Style Guidelines
