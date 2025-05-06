@@ -1,4 +1,4 @@
-# MicroFram: Blender Render Farm
+# MicroFarm: Blender Render Farm
 
 A lightweight distributed rendering system for Blender, featuring a server plugin and client script to distribute rendering tasks across multiple computers.
 
@@ -7,14 +7,15 @@ A lightweight distributed rendering system for Blender, featuring a server plugi
 This project provides a simple yet effective way to distribute Blender rendering tasks across multiple machines. It consists of:
 
 1. **Server Plugin (`blender-render-farm-plugin.py`)**: A Blender addon that turns a Blender instance into a render server
-2. **Client Script (`blender-client-script.py`)**: A Python script that connects to the server and renders assigned frames
+2. **Standalone Server (`standalone_server.py`)**: A Python-based server with web interface that doesn't require Blender
+3. **Client Script (`blender-client-script.py`)**: A Python script that connects to the server and renders assigned frames
 
 The system is designed to be:
 - Easy to set up and use
 - Works with Blender 4.x
 - Handles frame distribution automatically
 - Creates MP4 videos from rendered frames
-- Provides job monitoring and management through the Blender UI
+- Provides job monitoring and management through the Blender UI or web interface
 
 ## Features
 
@@ -25,10 +26,13 @@ The system is designed to be:
 - **Fault Tolerance**: Automatically reassigns frames from disconnected clients
 - **MP4 Creation**: Automatically creates videos from rendered frames
 - **Flexible Output Organization**: Configurable directory structure for frames and videos
+- **Web Interface**: Modern web UI for job management (standalone server only)
+- **Job Persistence**: Jobs persist across server restarts (standalone server only)
+- **File Browser**: Browse and download rendered files and videos (standalone server only)
 
 ## Installation
 
-### Server Setup
+### Blender Server Setup
 
 1. Open Blender (4.0+)
 2. Go to Edit > Preferences > Add-ons > Install
@@ -37,6 +41,33 @@ The system is designed to be:
 5. Configure the addon settings:
    - Set the server port (default: 9090)
    - Set the output directory for rendered frames
+
+### Standalone Server Setup
+
+The standalone server requires Python 3.7+ with the following packages:
+- Flask
+- Werkzeug
+- FFmpeg (for MP4 creation)
+
+#### Installation:
+
+1. Install Python 3.7+ if not already installed
+2. Install required packages:
+   ```bash
+   pip install flask werkzeug
+   ```
+3. Install FFmpeg for your platform if not already installed
+
+#### Running the Server:
+
+```bash
+python standalone_server.py --port 9090 --web-port 8080 --output-dir /path/to/output
+```
+
+Options:
+- `--port`: Socket server port for client connections (default: 9090)
+- `--web-port`: Web interface port (default: 8080)
+- `--output-dir`: Directory for rendered frames and job data (default: ./render_output)
 
 ### Client Setup
 
@@ -68,7 +99,7 @@ blender --background --python blender-client-script.py -- --server 192.168.1.100
 
 ## Usage
 
-### Server (Blender UI)
+### Blender Server UI
 
 1. Open Blender on the computer that will act as the render server
 2. Go to the "Render Properties" tab
@@ -79,19 +110,47 @@ blender --background --python blender-client-script.py -- --server 192.168.1.100
    - Enable/disable "Pack Textures" 
    - Configure MP4 video creation settings
 
+### Standalone Server Web Interface
+
+1. Start the standalone server as described in the setup section
+2. Open a web browser and navigate to `http://localhost:8080` (or whatever port you configured)
+3. The web interface has the following sections:
+   - **Upload Blend File**: Upload .blend files and configure rendering options
+   - **Active Jobs**: Shows currently rendering jobs with progress information
+   - **Queued Jobs**: Jobs waiting to be processed or paused jobs
+   - **Completed Jobs**: Finished jobs with preview images/videos and download options
+   - **Connected Clients**: Shows all connected render clients
+
 ### Creating a Render Job
 
+#### Using Blender Server:
 1. Open your Blender file with the animation you want to render
 2. Set up your render settings (resolution, samples, etc.) as you normally would
 3. In the "Render Server" panel, click "Create New Render Job"
 4. The job will be distributed to any connected clients
 
+#### Using Standalone Server:
+1. In the web interface, use the "Upload Blend File" section
+2. Configure job settings (frame range, frames per chunk, etc.)
+3. Click "Upload and Create Job"
+4. The job will be queued or distributed to available clients
+
 ### Managing Jobs
 
+#### Blender Server:
 - **Monitor Progress**: The server UI shows job progress, including frame count and percentage
 - **Cancel Job**: Click "Cancel Job" to stop an active job
 - **Force Complete**: Click "Force Complete" to mark a stalled job as complete
 - **Clear Completed Job**: Remove completed job data from memory
+
+#### Standalone Server:
+- **Monitor Progress**: The web UI displays real-time progress bars and frame counts
+- **Cancel Job**: Click "Cancel" to stop an active or queued job
+- **Force Complete**: Click "Force Complete" to mark a job as finished
+- **Activate Job**: Start or restart a queued/pending job
+- **Delete Job**: Remove completed jobs and their files
+- **Create MP4**: Convert rendered frames to an MP4 video with selectable codec and quality
+- **View Files**: Browse all files associated with a job
 
 ### MP4 Video Creation
 
@@ -103,7 +162,7 @@ When a job completes, an MP4 video is automatically created from the rendered fr
 
 ## Directory Structure
 
-The system organizes rendered files in the following structure:
+Both server types organize rendered files in a similar structure:
 
 ```
 output_directory/
@@ -114,6 +173,7 @@ output_directory/
 │   └── job_001_1234567890_render.mp4  # Optional: MP4 in frames directory
 │
 ├── job_001_1234567890_render.mp4      # Optional: MP4 in parent directory
+├── job_001_1234567890_info.json       # Standalone server: Job metadata (status, progress, etc.)
 └── ...
 ```
 
@@ -130,10 +190,12 @@ Client-side files use this structure:
 
 ## Requirements
 
-- **Server**: Blender 4.0 or higher
+- **Blender Server**: Blender 4.0 or higher
+- **Standalone Server**: Python 3.7+, Flask, Werkzeug
 - **Client**: Blender 4.0 or higher + Python 3.7+
 - **Network**: Clients must be able to connect to the server's IP address and port
 - **MP4 Creation**: FFmpeg installed on the server machine (for video creation)
+- **Web Interface**: Modern web browser (Chrome, Firefox, Safari, Edge)
 
 ## Troubleshooting
 
@@ -146,7 +208,8 @@ Client-side files use this structure:
 
 ### Logs
 
-- Server logs are visible in the Blender console
+- Blender server logs are visible in the Blender console
+- Standalone server logs are displayed in the terminal where the server is running
 - Client logs are printed to the console/terminal where the client is running
 
 ## License
@@ -154,9 +217,10 @@ Client-side files use this structure:
 APACHE 2.0 License - See LICENSE file for details.
 
 ## Acknowledgments
-- Generated usign AI tools such as Claud Code and Gimini 2.5
+- Generated using AI tools such as Claude Code and Gemini 2.5
 - Built for Blender 4.x
 - Uses FFmpeg for video encoding
+- Uses Flask for the standalone server's web interface
 - Thanks to everyone in the Blender community
 
 ## Contributing

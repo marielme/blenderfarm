@@ -16,7 +16,7 @@ License: Apache 2.0
 """
 
 bl_info = {
-    "name": "MicroFram: Render Farm Server v1.3", # Version bump for refactor
+    "name": "MicroFarm: Render Farm Server v1.3", # Version bump for refactor
     "author": "Mariel Martinex, Using AI tools",
     "version": (1, 3, 0),
     # --- Updated for Blender 4.x ---
