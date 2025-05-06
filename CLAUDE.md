@@ -3,8 +3,8 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Build/Run Commands
-- Run blender server: `blender --python blender-render-farm-plugin.py`
-- Run client: `blender --background --python blender-client-script.py -- --server SERVER_IP --port 9090 --name CLIENT_NAME`
+- Run blender server: `blender --python blender-server-farm-plugin.py`
+- Run client: `blender --background --python client-script.py -- --server SERVER_IP --port 9090 --name CLIENT_NAME`
 - Test with demo file: `blender demo.blend`
 
 ## Code Style Guidelines
@@ -18,6 +18,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Threading**: Use RLock for shared resources, mark critical sections with comments
 
 ## Project Structure
-- blender-render-farm-plugin.py: Blender add-on for server functionality
-- blender-client-script.py: Client script for worker nodes
+- blender-server-farm-plugin.py: Blender add-on for server functionality
+- blender-client-plugin.py: Blender add-on for client functionality
+- client-script.py: Client script for worker nodes
+- server-script.py: Standalone server script with web interface
 - demo.blend: Example Blender file for testing
