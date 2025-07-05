@@ -4,7 +4,7 @@ A lightweight distributed rendering system for Blender, featuring a server/clien
 
 ## Overview
 
-This project provides a simple yet effective way to distribute Blender rendering tasks across multiple machines.
+This project provides a simple yet effective way to distribute Blender rendering jobs across multiple machines.
 
 You can choose one of this options:
 
@@ -49,11 +49,13 @@ The system is designed to be:
 
 ### As Blender ADD-ON
 
+Download this github, example as a zip file: [https://github.com/marielme/blenderfarm/archive/refs/heads/main.zip](https://github.com/marielme/blenderfarm/archive/refs/heads/main.zip)
+
 #### Blender Server Setup
 
 1. Open Blender (4.0+)
 2. Go to Edit > Preferences > Add-ons > Install
-3. Select the `blender-server-farm-add-on.py` file and click 'Install Add-on'
+3. Select the `blender_add-on_microfarm_server.py` file and click 'Install Add-on'
 4. Enable the add-on by checking the box next to "MicroFarm Server"
 5. Configure the addon settings:
    - Set the server port (default: 9090)
@@ -63,7 +65,7 @@ The system is designed to be:
 
 1. Open Blender (4.0+)
 2. Go to Edit > Preferences > Add-ons > Install
-3. Select the `blender-client-add-on.py` file and click 'Install Add-on'
+3. Select the `blender_add-on_microfarm_client.py` file and click 'Install Add-on'
 4. Enable the add-on by checking the box next to "MicroFarm Client"
 5. Configure the addon settings:
    - Set the server port (default: 9090)
@@ -71,7 +73,9 @@ The system is designed to be:
 
 ### As Python Script
 
-### Standalone Server Setup
+#### Standalone Server Setup
+
+Donwnload using as zip file or using git
 
 #### Installation:
 
