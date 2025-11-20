@@ -626,6 +626,11 @@ import os
 # Load the blend file
 bpy.ops.wm.open_mainfile(filepath="{safe_blend_path}")
 
+# Force PNG output format
+bpy.context.scene.render.image_settings.file_format = 'PNG'
+bpy.context.scene.render.image_settings.color_mode = 'RGBA'
+bpy.context.scene.render.image_settings.compression = 15
+
 # Set the output path
 bpy.context.scene.render.filepath = "{safe_output_path}"
 
