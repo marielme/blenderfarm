@@ -944,6 +944,40 @@ def create_job(blend_file_path: str, frame_start: int, frame_end: int, frame_ste
     job_output_dir = os.path.join(OUTPUT_DIR, job_id)
     os.makedirs(job_output_dir, exist_ok=True)
     
+    # Check for existing rendered frames to resume progress
+    existing_files = glob.glob(os.path.join(job_output_dir, "frame_*.png"))
+    if existing_files:
+        logger.info(f"Found {len(existing_files)} existing frames for job {job_id}. Checking for resume...")
+        frames_found = 0
+        for file_path in existing_files:
+            try:
+                filename = os.path.basename(file_path)
+                # Try to extract frame number. Expected: frame_XXXX_XXXX.png or frame_XXXX.png
+                # We split by '_' and look for digits that match a frame in our list
+                parts = filename.replace('.png', '').split('_')
+                
+                # Iterate parts in reverse to find the frame number (usually at the end)
+                for part in reversed(parts):
+                    if part.isdigit():
+                        frame_num = int(part)
+                        if frame_num in all_frames:
+                            if frame_num not in job_data["completed_frames"]:
+                                job_data["completed_frames"].append(frame_num)
+                                if frame_num in job_data["unassigned_frames"]:
+                                    job_data["unassigned_frames"].remove(frame_num)
+                                frames_found += 1
+                            break 
+            except Exception as e:
+                logger.warning(f"Could not parse frame number from {filename}: {e}")
+        
+        if frames_found > 0:
+            logger.info(f"Resumed job {job_id}: {frames_found} frames already completed.")
+            # If all frames are done, mark as completed?
+            if not job_data["unassigned_frames"] and len(job_data["completed_frames"]) == len(all_frames):
+                job_data["status"] = "completed"
+                job_data["end_time"] = datetime.now()
+                logger.info(f"Job {job_id} is fully completed based on existing files.")
+
     # Save job info JSON
     update_job_json(job_id)
     
@@ -1083,6 +1117,14 @@ def create_mp4_for_job(job_id: str, frames_dir: str, codec='h264', quality='medi
             
             if process.returncode == 0:
                 logger.info(f"Successfully created MP4 video for job {job_id}: {output_mp4}")
+                
+                # Verify file existence and size
+                if os.path.exists(output_mp4):
+                    size_mb = os.path.getsize(output_mp4) / (1024 * 1024)
+                    logger.info(f"Verified video file exists. Size: {size_mb:.2f} MB")
+                else:
+                    logger.warning(f"FFmpeg reported success but file not found: {output_mp4}")
+
                 with CLIENT_LOCK:
                     if job_id in ACTIVE_JOBS:
                         ACTIVE_JOBS[job_id]["mp4_status"] = "completed"
