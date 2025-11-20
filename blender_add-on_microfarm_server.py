@@ -324,6 +324,12 @@ def create_mp4_from_frames(frames_dir, codec='h264', quality='medium', job_id='u
         
         if process.returncode == 0:
             print(f"Render Server: Successfully created MP4 video for job '{job_id}': {output_mp4}")
+            # Verify file existence and size
+            if os.path.exists(output_mp4):
+                size_mb = os.path.getsize(output_mp4) / (1024 * 1024)
+                print(f"Render Server: Verified video file exists. Size: {size_mb:.2f} MB")
+            else:
+                print(f"Render Server: Warning - FFmpeg reported success but file not found: {output_mp4}")
         else:
             print(f"Render Server: Error creating MP4 video: {stderr.decode()}")
             
@@ -1423,10 +1429,25 @@ class RENDERSERVER_OT_send_scene(bpy.types.Operator):
 
         temp_dir = tempfile.gettempdir()
         # Include timestamp in filename for slightly more uniqueness if needed
+        # Use the current filename if available, otherwise fallback to timestamped name
+        if bpy.data.filepath:
+            original_name = os.path.basename(bpy.data.filepath)
+            # Remove extension to append timestamp if desired, or just use it directly
+            # For clarity in the farm, we'll use the original name but maybe append a small ID if needed
+            # But user requested "file name doesn't change", so we try to keep it close.
+            # We still need a unique temp file on disk to avoid overwriting the actual file.
+            
+            # We will use the original name for the "blend_filename" property (what the client sees)
+            # but keep the temp file path unique.
+            self.blend_filename = original_name
+        else:
+            self.blend_filename = f"renderjob_{self._job_id}.blend"
+
+        temp_dir = tempfile.gettempdir()
+        # The actual file on disk needs to be unique to avoid conflicts
         timestamp = int(time.time())
-        blend_filename = f"renderjob_{self._job_id}_{timestamp}.blend"
-        temp_blend_path = os.path.join(temp_dir, blend_filename)
-        self.blend_filename = blend_filename # Store the intended filename
+        temp_file_name = f"temp_{self._job_id}_{timestamp}_{self.blend_filename}"
+        temp_blend_path = os.path.join(temp_dir, temp_file_name)
 
         # Prevent accidentally overwriting the currently open file if it's in the temp dir somehow
         if bpy.data.filepath and os.path.normpath(bpy.data.filepath) == os.path.normpath(temp_blend_path):
@@ -2067,7 +2088,31 @@ class RENDERSERVER_OT_force_job_complete(bpy.types.Operator):
                 completed = True
                 
                 # Update the JSON file with completed status
+                # Set MP4 output directory (required for create_mp4_check)
+                prefs = context.preferences.addons[__name__].preferences
+                output_dir = bpy.path.abspath(prefs.output_directory)
+                job["mp4_output_dir"] = os.path.join(output_dir, job_id)
+                
                 update_job_json(job_id)
+
+                # Check if video creation is enabled and trigger it
+                # We need to check preferences/scene props. 
+                # Since we are in the operator, we can check context directly if available, 
+                # but create_mp4_check handles finding the right scene props.
+                
+                # We just need to flag it and start the thread
+                job["create_mp4_requested"] = True
+                
+                # Schedule MP4 creation in a separate thread
+                def delayed_mp4_creation():
+                    time.sleep(1.0)  # Give a moment for things to settle
+                    create_mp4_check(job_id)
+                    
+                threading.Thread(
+                    target=delayed_mp4_creation,
+                    daemon=True
+                ).start()
+                print(f"Render Server: Triggered MP4 creation for forced completion of '{job_id}'")
             else:
                 if not job:
                     print(f"Render Server: Cannot force-complete job '{job_id}', not found")

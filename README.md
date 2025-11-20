@@ -17,7 +17,7 @@ You can use the Blender add-on to run a server and Client Script:
 
 ![Blender Server Add-on](assets/Blender_UI.jpg)
 
-### (or) Python version
+### (or) Python version (standalone)
 
 Using a Stand Alone python server (with web interface) and run client
 
@@ -28,7 +28,7 @@ Using a Stand Alone python server (with web interface) and run client
 
 The system is designed to be:
 - Easy to set up and use
-- Works with Blender 4.x
+- Works with Blender 4.x and 5.x
 - Handles frame distribution automatically
 - Creates MP4 videos from rendered frames
 - Provides job monitoring and management through the Blender UI or web interface
@@ -53,7 +53,7 @@ Download this github, example as a zip file: [https://github.com/marielme/blende
 
 #### Blender Server Setup
 
-1. Open Blender (4.0+)
+1. Open Blender (4.x or 5.x)
 2. Go to Edit > Preferences > Add-ons > Install
 3. Select the `blender_add-on_microfarm_server.py` file and click 'Install Add-on'
 4. Enable the add-on by checking the box next to "MicroFarm Server"
@@ -61,9 +61,11 @@ Download this github, example as a zip file: [https://github.com/marielme/blende
    - Set the server port (default: 9090)
    - Set the output directory for rendered frames
 
+> Be sure: [FFmpeg](https://www.ffmpeg.org/download.html) is installed in you platform
+
 #### Blender Client Setup
 
-1. Open Blender (4.0+)
+1. Open Blender (4.x or 5.x)
 2. Go to Edit > Preferences > Add-ons > Install
 3. Select the `blender_add-on_microfarm_client.py` file and click 'Install Add-on'
 4. Enable the add-on by checking the box next to "MicroFarm Client"
@@ -79,8 +81,8 @@ Donwnload using as zip file or using git
 
 #### Installation:
 
-1. Install Python 3.7+ if not already installed
-2. Install required packages:
+1. Install Python 3.7+ if not already installed (python or python3)
+2. Install required packages (pip or pip3):
    ```bash
    pip install -r requirements.txt
    ```
