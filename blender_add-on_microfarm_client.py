@@ -5,7 +5,7 @@ A add-on version of the command-line client script for MicroFarm render farm.
 Connects to the MicroFarm server and processes render tasks within Blender.
 
 Author: Mariel Martinez + AI tools
-License: GPL v3
+License: Apache 2.0
 """
 
 bl_info = {

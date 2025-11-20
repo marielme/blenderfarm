@@ -2,7 +2,7 @@
 """
 MicroFarm: Blender Add-On server
 =================================================================
-CLEANED AND VERIFIED FOR BLENDER 4.X COMPATIBILITY
+FOR BLENDER 4.X, 5.X COMPATIBILITY
 A simplified server component for Blender that distributes rendering tasks.
 This version loads the blend file content into memory when a job is created
 and sends it directly, instead of saving a persistent temp file.
