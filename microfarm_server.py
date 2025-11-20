@@ -38,7 +38,7 @@ from pathlib import Path
 import shutil
 
 # Web server imports
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, render_template, send_from_directory, send_file
 from werkzeug.utils import secure_filename
 
 # Initialize logging
@@ -1396,7 +1396,7 @@ def api_cancel_job(job_id):
     """Cancels a job."""
     result = cancel_job(job_id)
     if result:
-        return jsonify({"success": True})
+        return jsonify({"status": "ok"})
     else:
         return jsonify({"error": f"Failed to cancel job {job_id}"}), 400
 
@@ -1406,7 +1406,7 @@ def api_force_complete_job(job_id):
     """Forces a job to complete."""
     result = force_complete_job(job_id)
     if result:
-        return jsonify({"success": True})
+        return jsonify({"status": "ok"})
     else:
         return jsonify({"error": f"Failed to force-complete job {job_id}"}), 400
 
@@ -1500,7 +1500,7 @@ def api_create_mp4(job_id):
         update_job_json(job_id)
         
         logger.info(f"MP4 creation started for job {job_id} with codec {codec}, quality {quality}")
-        return jsonify({"success": True, "message": f"MP4 creation started for job {job_id}"})
+        return jsonify({"status": "ok", "message": f"MP4 creation started for job {job_id}"})
 
 
 @app.route('/api/jobs/<job_id>/mp4_status', methods=['GET'])
@@ -1666,16 +1666,29 @@ def api_job_files(job_id):
         <title>Files for Job {job_id}</title>
         <style>
             body {{ font-family: Arial, sans-serif; padding: 20px; }}
-            table {{ border-collapse: collapse; width: 100%; }}
+            table {{ border-collapse: collapse; width: 100%; margin-top: 20px; }}
             th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
             th {{ background-color: #f2f2f2; }}
             tr:nth-child(even) {{ background-color: #f9f9f9; }}
             .file-link {{ text-decoration: none; color: #2196f3; }}
+            .download-all-btn {{ 
+                display: inline-block;
+                background-color: #4caf50;
+                color: white;
+                padding: 10px 20px;
+                text-decoration: none;
+                border-radius: 5px;
+                font-weight: bold;
+                margin-bottom: 20px;
+                transition: background-color 0.3s;
+            }}
+            .download-all-btn:hover {{ background-color: #45a049; }}
         </style>
     </head>
     <body>
         <h1>Files for Job {job_id}</h1>
         <p>Directory: {job_dir}</p>
+        <a href="/api/jobs/{job_id}/download_all" class="download-all-btn">Download All (ZIP)</a>
         <table>
             <tr>
                 <th>Filename</th>
@@ -1700,6 +1713,42 @@ def api_job_files(job_id):
     """
     
     return html_content
+
+
+@app.route('/api/jobs/<job_id>/download_all', methods=['GET'])
+def api_job_download_all(job_id):
+    """Downloads all files for a job as a zip archive."""
+    import zipfile
+    import io
+    
+    job_dir = os.path.join(OUTPUT_DIR, job_id)
+    
+    # Check if directory exists
+    if not os.path.exists(job_dir):
+        return jsonify({"error": f"Job directory not found for {job_id}"}), 404
+    
+    # Create a BytesIO object to hold the zip file in memory
+    memory_file = io.BytesIO()
+    
+    # Create zip file
+    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        # Add all files from the job directory
+        for filename in os.listdir(job_dir):
+            file_path = os.path.join(job_dir, filename)
+            if os.path.isfile(file_path):
+                # Add file to zip with just the filename (not full path)
+                zipf.write(file_path, filename)
+    
+    # Seek to the beginning of the BytesIO object
+    memory_file.seek(0)
+    
+    # Send the zip file
+    return send_file(
+        memory_file,
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name=f'{job_id}_all_files.zip'
+    )
 
 
 @app.route('/api/jobs/<job_id>/files/<path:filename>', methods=['GET'])
@@ -1734,6 +1783,38 @@ def api_job_latest_frame(job_id):
     
     # Serve the file
     return send_from_directory(os.path.dirname(latest_frame), os.path.basename(latest_frame))
+
+
+@app.route('/api/jobs/<job_id>/frame/<int:frame_num>', methods=['GET'])
+def api_job_specific_frame(job_id, frame_num):
+    """Returns a specific rendered frame for a job."""
+    job_dir = os.path.join(OUTPUT_DIR, job_id)
+    
+    # Check if directory exists
+    if not os.path.exists(job_dir):
+        return jsonify({"error": f"Job directory not found for {job_id}"}), 404
+    
+    # Look for PNG files matching the frame number
+    # We look for frame_XXXX.png or frame_XXXX_XXXX.png where the frame number is present
+    frame_files = sorted(glob.glob(os.path.join(job_dir, "frame_*.png")))
+    
+    target_file = None
+    for file_path in frame_files:
+        filename = os.path.basename(file_path)
+        # Try to extract frame number
+        parts = filename.replace('.png', '').split('_')
+        for part in reversed(parts):
+            if part.isdigit() and int(part) == frame_num:
+                target_file = file_path
+                break
+        if target_file:
+            break
+            
+    if not target_file:
+        return jsonify({"error": f"Frame {frame_num} not found"}), 404
+    
+    # Serve the file
+    return send_from_directory(os.path.dirname(target_file), os.path.basename(target_file))
 
 
 @app.route('/api/jobs/<job_id>/mp4', methods=['GET'])
@@ -1795,7 +1876,7 @@ def api_delete_job(job_id):
         ACTIVE_JOBS.pop(job_id, None)
         logger.info(f"Removed job {job_id} from active jobs")
         
-        return jsonify({"success": True, "message": f"Job {job_id} deleted successfully"})
+        return jsonify({"status": "ok", "message": f"Job {job_id} deleted successfully"})
 
 
 @app.route('/static/<path:path>')
