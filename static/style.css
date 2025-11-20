@@ -109,6 +109,7 @@ a:hover {
 .container {
     max-width: 1400px;
     margin: 0 auto;
+    padding-bottom: 120px;
 }
 
 .dashboard-layout {
@@ -390,7 +391,7 @@ button.warning {
 }
 
 .app-title {
-    font-size: 2rem;
+    font-size: 1.6rem;
     font-weight: 800;
     letter-spacing: -0.025em;
     margin-bottom: 0;
@@ -422,6 +423,7 @@ button.warning {
     border-radius: var(--radius-md);
     overflow: hidden;
     border: 1px solid var(--border-color);
+    cursor: pointer;
 }
 
 .job-preview img,

@@ -25,13 +25,8 @@
                     <circle cx="34.5" cy="18" r="3.5" fill="#10B981" stroke="white" stroke-width="2" />
                     <circle cx="24" cy="36" r="3.5" fill="#10B981" stroke="white" stroke-width="2" />
                 </svg>
-                <h1 class="app-title">MicroFarm</h1>
+                <h1 class="app-title">MicroFarm for Blender</h1>
             </div>
-
-            <button id="themeToggle" class="theme-toggle btn secondary">
-                <span class="icon dark-icon"></span>
-                <span>Toggle Theme</span>
-            </button>
         </div>
 
         <div class="dashboard-layout">
@@ -236,23 +231,53 @@
                 return;
             }
 
-            let html = '';
-            clients.forEach(client => {
-                const statusClass = `status-${client.status?.toLowerCase() || 'unknown'}`;
-                const lastPing = client.last_ping ? new Date(client.last_ping).toLocaleString() : 'N/A';
-                html += `
-                    <div class="client-card">
-                        <h4>${client.name || 'Unnamed Client'}</h4>
-                        <p><strong>IP:</strong> ${client.ip || 'N/A'}</p>
-                        <p><strong>Status:</strong> <span class="status-badge ${statusClass}">${client.status || 'Unknown'}</span></p>
-                        <p><strong>Last Seen:</strong> ${lastPing}</p>
-                        ${client.current_job_id ? `<p><strong>Job:</strong> ${client.current_job_id}</p>` : ''}
-                        ${client.current_frames && client.current_frames.length > 0 ? `<p><strong>Frames:</strong> ${client.current_frames.join(', ')}</p>` : ''}
-                    </div>
-                `;
+            // Create a map of existing client cards by name
+            const existingCards = {};
+            grid.querySelectorAll('.client-card').forEach(card => {
+                const name = card.querySelector('h4')?.textContent;
+                if (name) existingCards[name] = card;
             });
 
-            grid.innerHTML = html;
+            // Track which clients we've seen
+            const seenClients = new Set();
+
+            clients.forEach(client => {
+                const clientName = client.name || 'Unnamed Client';
+                seenClients.add(clientName);
+
+                const statusClass = `status-${client.status?.toLowerCase() || 'unknown'}`;
+                const lastPing = client.last_ping ? new Date(client.last_ping).toLocaleString() : 'N/A';
+
+                const newHtml = `
+                    <h4>${clientName}</h4>
+                    <p><strong>IP:</strong> ${client.ip || 'N/A'}</p>
+                    <p><strong>Status:</strong> <span class="status-badge ${statusClass}">${client.status || 'Unknown'}</span></p>
+                    <p><strong>Last Seen:</strong> ${lastPing}</p>
+                    ${client.current_job_id ? `<p><strong>Job:</strong> ${client.current_job_id}</p>` : ''}
+                    ${client.current_frames && client.current_frames.length > 0 ? `<p><strong>Frames:</strong> ${client.current_frames.join(', ')}</p>` : ''}
+                `;
+
+                if (existingCards[clientName]) {
+                    // Update existing card only if content changed
+                    if (existingCards[clientName].innerHTML.trim() !== newHtml.trim()) {
+                        existingCards[clientName].innerHTML = newHtml;
+                    }
+                } else {
+                    // Create new card
+                    const newCard = document.createElement('div');
+                    newCard.className = 'client-card';
+                    newCard.innerHTML = newHtml;
+                    grid.appendChild(newCard);
+                    existingCards[clientName] = newCard;
+                }
+            });
+
+            // Remove cards for clients that no longer exist
+            Object.keys(existingCards).forEach(name => {
+                if (!seenClients.has(name)) {
+                    existingCards[name].remove();
+                }
+            });
         }
 
         function updateJobs(jobs, gridId, sectionId) {
@@ -291,6 +316,18 @@
                 if (job.status === 'completed' || job.status === 'cancelled') {
                     const hasActivePreview = job.status === 'active' && job.completed_frames > 0;
 
+                    // Download buttons at the top (if MP4 is ready)
+                    let downloadButtons = '';
+                    if (job.mp4_status === 'completed') {
+                        downloadButtons = `
+                            <div class="download-buttons" style="display: flex; gap: 10px; margin-bottom: 15px;">
+                                <a href="/api/jobs/${job.id}/mp4" target="_blank" class="btn" style="flex: 1; text-align: center; background-color: var(--success-color); color: white; text-decoration: none;">MP4</a>
+                                <a href="/api/jobs/${job.id}/files" target="_blank" class="btn" style="flex: 1; text-align: center; background-color: var(--primary-color); color: white; text-decoration: none;">Images</a>
+                            </div>
+                        `;
+                    }
+
+                    // MP4 creation controls
                     let mp4Controls = `
                         <div class="mp4-controls" style="margin-top: 15px; padding-top: 10px; border-top: 1px solid var(--border-color);">
                             <h5>Create MP4 Video</h5>
@@ -316,24 +353,31 @@
                     if (job.mp4_status) {
                         let statusClass = 'in-progress';
                         let statusText = 'Creating MP4...';
-                        if (job.mp4_status === 'completed') {
-                            statusClass = 'success';
-                            statusText = `<a href="/api/jobs/${job.id}/mp4" target="_blank" style="color: white; text-decoration: underline; margin-right: 15px;">MP4</a><a href="/api/jobs/${job.id}/files" target="_blank" style="color: white; text-decoration: underline;">Images</a>`;
-                        } else if (job.mp4_status === 'failed') {
+
+                        // Only show status for in-progress or failed states
+                        if (job.mp4_status === 'failed') {
                             statusClass = 'error';
                             statusText = `Failed: ${job.mp4_error || 'Unknown error'}`;
-                        }
 
-                        mp4Controls += `
-                            <div class="mp4-status ${statusClass}" style="margin-top: 10px; padding: 8px; border-radius: 4px; background-color: var(--${statusClass === 'success' ? 'success' : statusClass === 'error' ? 'danger' : 'warning'}-color); color: white;">
-                                ${statusText}
-                            </div>
-                         `;
+                            mp4Controls += `
+                                <div class="mp4-status ${statusClass}" style="margin-top: 10px; padding: 8px; border-radius: 4px; background-color: var(--danger-color); color: white;">
+                                    ${statusText}
+                                </div>
+                             `;
+                        } else if (job.mp4_status !== 'completed') {
+                            // Show in-progress status
+                            mp4Controls += `
+                                <div class="mp4-status ${statusClass}" style="margin-top: 10px; padding: 8px; border-radius: 4px; background-color: var(--warning-color); color: white;">
+                                    ${statusText}
+                                </div>
+                             `;
+                        }
                     }
 
                     jobExtras = `
+                        ${downloadButtons}
                         <p><strong>End:</strong> ${endTime}</p>
-                        <p><strong>Duration:</strong> ${job.duration || 'N/A'}</p>
+                        ${job.duration && job.duration !== 'N/A' ? `<p><strong>Duration:</strong> ${job.duration}</p>` : ''}
                         ${mp4Controls}
                         <button onclick="deleteJob('${job.id}')" class="btn delete-job" style="margin-top: 10px; width: 100%; background-color: var(--danger-color);">Delete Job</button>
                      `;
@@ -351,7 +395,6 @@
                 if (job.mp4_status === 'completed' && job.mp4_path) {
                     previewHtml = `
                         <div class="job-preview video-preview" onclick="window.open('/api/jobs/${job.id}/mp4', '_blank')">
-                            <div class="video-badge">VIDEO READY</div>
                             <div class="video-container">
                                 <video class="video-thumbnail" src="/api/jobs/${job.id}/mp4" muted loop onmouseover="this.play()" onmouseout="this.pause();this.currentTime=0;"></video>
                                 <div class="play-button"></div>
@@ -361,14 +404,14 @@
                 } else if (job.completed_frames && job.completed_frames.length > 0) {
                     const randomFrame = job.completed_frames[job.completed_frames.length - 1];
                     previewHtml = `
-                        <div class="job-preview" onclick="window.open('/api/jobs/${job.id}/preview', '_blank')">
+                        <div class="job-preview" onclick="window.open('/api/jobs/${job.id}/latest_frame', '_blank')">
                             <div class="preview-badge">PREVIEW</div>
                             <img src="/api/jobs/${job.id}/latest_frame" alt="Latest Frame" loading="lazy">
                         </div>
                     `;
                 } else if (job.status === 'active') {
                     previewHtml = `
-                        <div class="job-preview">
+                        <div class="job-preview" onclick="window.open('/api/jobs/${job.id}/latest_frame', '_blank')">
                             <img src="/api/jobs/${job.id}/latest_frame" alt="Latest Frame" loading="lazy" onerror="this.style.display='none'">
                         </div>
                     `;
@@ -376,20 +419,30 @@
 
                 html += `
                     <div class="job-card">
-                        <h4>${job.project_name || 'Untitled'} <span class="text-sm text-muted">#${job.id}</span></h4>
+                        <div style="margin-bottom: 10px;">
+                            <h4 style="margin: 0 0 5px 0; text-align: left;">${job.project_name || 'Untitled'}</h4>
+                            <div style="text-align: right; font-size: 0.85em; color: var(--text-muted);">#${job.id}</div>
+                        </div>
                         <p><strong>Status:</strong> <span class="status-badge ${statusClass}">${statusLabel}</span></p>
-                        <p><strong>Progress:</strong> ${Math.round(progress)}% (${job.completed_frames ? job.completed_frames.length : 0}/${job.all_frames ? job.all_frames.length : 0})</p>
+                        <p><strong>Progress:</strong> ${Math.round(progress)}% (${job.completed_frames || 0}/${job.total_frames || 0})</p>
                         <div class="progress-container">
                             <div class="progress-bar" style="width: ${progress}%"></div>
                         </div>
                         <p><strong>Start:</strong> ${startTime}</p>
                         ${previewHtml}
-                        ${jobExtras}
+                        <div style="margin-top: 15px;">
+                            ${jobExtras}
+                        </div>
                     </div>
                 `;
             });
 
-            grid.innerHTML = html;
+            // Only update if content has changed
+            const newHtml = html.trim();
+            const currentHtml = grid.innerHTML.trim();
+            if (newHtml !== currentHtml) {
+                grid.innerHTML = html;
+            }
         }
 
         function uploadBlendFile() {
@@ -426,18 +479,32 @@
         }
 
         function cancelJob(jobId) {
-            if (!confirm('Are you sure you want to cancel this job?')) return;
+            if (!confirm('Are you sure you want to cancel and delete this job? This cannot be undone.')) return;
 
+            // First cancel the job
             fetch(`/api/jobs/${jobId}/cancel`, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'ok' || data.success === true) {
+                        // Then delete it
+                        return fetch(`/api/jobs/${jobId}/delete`, { method: 'POST' });
+                    } else {
+                        throw new Error(data.message || 'Failed to cancel job');
+                    }
+                })
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'ok' || data.success === true) {
                         refreshData();
                     } else {
-                        alert('Failed to cancel job: ' + data.message);
+                        alert('Job cancelled but failed to delete: ' + data.message);
+                        refreshData(); // Still refresh to show cancelled state
                     }
                 })
-                .catch(error => alert('Error: ' + error));
+                .catch(error => {
+                    alert('Error: ' + error.message);
+                    refreshData(); // Refresh to show current state
+                });
         }
 
         function forceCompleteJob(jobId) {
@@ -504,6 +571,16 @@
                 });
         }
     </script>
+
+    <footer
+        style="position: fixed; bottom: 0; left: 0; right: 0; text-align: center; padding: 1rem; background-color: var(--card-bg); border-top: 1px solid var(--border-color); color: var(--text-muted); font-size: 0.875rem; z-index: 100;">
+        <button id="themeToggle" class="theme-toggle btn secondary" style="margin-bottom: 0.5rem;">
+            <span class="icon dark-icon"></span>
+            <span>Toggle Theme</span>
+        </button>
+        <div>Created by ANFAIA [Mariel Martinez]</div>
+    </footer>
 </body>
 
 </html>
+```
