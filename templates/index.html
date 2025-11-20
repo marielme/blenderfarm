@@ -395,7 +395,7 @@
                      `;
                 } else {
                     jobExtras = `
-                        <div class="job-controls" style="display: flex; justify-content: space-between; gap: 10px;">
+                        <div class="job-controls" style="display: flex; justify-content: space-between; gap: 20px;">
                             ${job.status === 'active' ? `<button onclick="cancelJob('${job.id}')" class="btn danger">Cancel</button>` : ''}
                             ${job.status === 'queued' ? `<button onclick="cancelJob('${job.id}')" class="btn danger">Remove</button>` : ''}
                             ${job.status === 'active' ? `<button onclick="forceCompleteJob('${job.id}')" class="btn warning" style="margin-left: auto;">Force Complete</button>` : ''}
