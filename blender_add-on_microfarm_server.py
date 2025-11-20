@@ -1513,7 +1513,8 @@ class RENDERSERVER_OT_send_scene(bpy.types.Operator):
                     filepath=temp_blend_path,
                     check_existing=False,
                     relative_remap=True, # Try to make paths relative within the temp file
-                    compress=True # Use compression for smaller file size (usually default)
+                    compress=True, # Use compression for smaller file size (usually default)
+                    copy=True # Save a copy without switching the active file
                 )
                 save_duration = time.monotonic() - save_start_time
                 print(f"  Temporary blend file saved in {save_duration:.2f}s")
