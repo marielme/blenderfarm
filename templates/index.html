@@ -198,6 +198,9 @@
             }
         }
 
+        // Track completed jobs to avoid unnecessary updates
+        let lastCompletedJobsIds = new Set();
+
         function refreshData() {
             fetch('/api/status')
                 .then(response => {
@@ -208,7 +211,16 @@
                     updateClients(data.clients);
                     updateJobs(data.active_jobs, 'activeJobsGrid', 'section-active-jobs');
                     updateJobs(data.queued_jobs, 'queuedJobsGrid', 'section-queued-jobs');
-                    updateJobs(data.completed_jobs, 'completedJobsGrid', 'section-completed-jobs');
+
+                    // Only update completed jobs if the list has changed
+                    const currentCompletedIds = new Set(data.completed_jobs.map(job => job.id));
+                    const hasChanged = currentCompletedIds.size !== lastCompletedJobsIds.size ||
+                        [...currentCompletedIds].some(id => !lastCompletedJobsIds.has(id));
+
+                    if (hasChanged) {
+                        updateJobs(data.completed_jobs, 'completedJobsGrid', 'section-completed-jobs');
+                        lastCompletedJobsIds = currentCompletedIds;
+                    }
 
                     document.querySelectorAll('#activeJobsGrid .job-preview img').forEach(img => {
                         if (img.src.includes('/latest_frame')) {
@@ -383,10 +395,10 @@
                      `;
                 } else {
                     jobExtras = `
-                        <div class="job-controls">
+                        <div class="job-controls" style="display: flex; justify-content: space-between; gap: 10px;">
                             ${job.status === 'active' ? `<button onclick="cancelJob('${job.id}')" class="btn danger">Cancel</button>` : ''}
                             ${job.status === 'queued' ? `<button onclick="cancelJob('${job.id}')" class="btn danger">Remove</button>` : ''}
-                            ${job.status === 'active' ? `<button onclick="forceCompleteJob('${job.id}')" class="btn warning">Force Complete</button>` : ''}
+                            ${job.status === 'active' ? `<button onclick="forceCompleteJob('${job.id}')" class="btn warning" style="margin-left: auto;">Force Complete</button>` : ''}
                         </div>
                     `;
                 }
@@ -578,7 +590,7 @@
             <span class="icon dark-icon"></span>
             <span>Toggle Theme</span>
         </button>
-        <div>Created by ANFAIA [Mariel Martinez]</div>
+        <div>Created by Mariel Martinez ©</div>
     </footer>
 </body>
 
